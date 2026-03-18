@@ -7,7 +7,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.1-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.2-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -156,6 +156,8 @@ $env:MOONSHOT_MODEL="kimi-latest"
 - [Colleague Setup Guide (English)](./COLLEAGUE_SETUP.en.md)
 - [产品架构说明](./docs/architecture.md)
 - [数据模型与处理流程](./docs/data-model-and-pipeline.md)
+- [License](./LICENSE)
+- [中文许可证说明](./LICENSE.zh-CN.md)
 
 ## 安全提醒
 
@@ -165,4 +167,8 @@ $env:MOONSHOT_MODEL="kimi-latest"
 
 ## License
 
-仓库已经准备好补充开源许可证，但正式写入哪一种许可证，建议在发布法律条款前先确认。
+这个仓库是公开展示仓库，但不是开源仓库。
+
+- 权利边界以 [`LICENSE`](./LICENSE) 为准
+- 未经许可，不授予自由复制、修改、分发、商用或衍生开发权利
+- 如果需要商用授权、合作开发或其他许可，请通过 GitHub 联系仓库 owner

@@ -144,7 +144,7 @@ def test_create_meeting_from_audio(tmp_path: Path) -> None:
     health_response = client.get("/api/health")
     assert health_response.status_code == 200
     health = health_response.json()
-    assert health["app_version"] == "0.2.1"
+    assert health["app_version"] == "0.2.2"
     assert health["asr_enabled"] == "true"
 
 

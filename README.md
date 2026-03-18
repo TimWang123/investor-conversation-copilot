@@ -7,7 +7,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.1-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.2-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -162,6 +162,8 @@ Interactive docs:
 - [Colleague Setup Guide (English)](./COLLEAGUE_SETUP.en.md)
 - [Architecture Notes](./docs/architecture.md)
 - [Data Model and Pipeline](./docs/data-model-and-pipeline.md)
+- [License (English)](./LICENSE)
+- [License Explainer (Chinese)](./LICENSE.zh-CN.md)
 
 ## Security Notes
 
@@ -171,4 +173,8 @@ Interactive docs:
 
 ## License
 
-The repository is ready for an open-source license file, but the final license choice should be confirmed before publishing legal terms.
+This repository is public for showcase and evaluation, but it is not open source.
+
+- Rights are reserved by default under [`LICENSE`](./LICENSE)
+- Reuse, redistribution, derivative development, or commercial use require permission
+- For licensing or partnership requests, contact the repository owner through GitHub

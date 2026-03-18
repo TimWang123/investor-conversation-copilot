@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.2] - 2026-03-18
+
+### Added
+
+- custom `All Rights Reserved` license file for public showcase without open-source usage rights
+- Chinese license explainer for easier team review
+- explicit commercial-use and permission guidance in the repository docs
+
+### Changed
+
+- bumped the public demo version to `0.2.2`
+- clarified that the public GitHub repository is for showcase and evaluation, not unrestricted reuse
+
 ## [0.2.1] - 2026-03-18
 
 ### Added
