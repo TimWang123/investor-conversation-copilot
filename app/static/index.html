@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Investor Conversation Copilot</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">融资沟通工作台</p>
+          <h1>把投资人问答沉淀成统一口径和培训资产</h1>
+          <p class="subtitle">
+            当前版本已经具备从会议转写中识别问答、复盘回答、沉淀主题库、生成标准话术和培训脚本的基础能力。
+          </p>
+        </div>
+        <div class="hero-card">
+          <p>当前最适合展示给老板的价值</p>
+          <ul>
+            <li>把重复回答变成组织级知识资产</li>
+            <li>定位哪些回答经常不完整或不一致</li>
+            <li>自动输出统一培训话术，支撑团队扩张</li>
+          </ul>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="panel composer-panel">
+          <div id="runtime-hint" class="runtime-hint">
+            建议通过 <code>http://127.0.0.1:8000</code> 打开本页。如果你是直接双击 HTML 文件，分析按钮无法连接后端接口。
+          </div>
+
+          <div class="panel-header">
+            <h2>新建会议分析</h2>
+            <div class="actions">
+              <button id="load-sample" class="ghost">载入示例</button>
+              <button id="reset-demo" class="ghost">清空演示数据</button>
+            </div>
+          </div>
+
+          <label>
+            会议标题
+            <input id="title" type="text" value="Pre-A 一对一投资沟通" />
+          </label>
+
+          <div class="grid two">
+            <label>
+              会议类型
+              <select id="meeting-type">
+                <option value="one_on_one">一对一</option>
+                <option value="roadshow">路演</option>
+                <option value="due_diligence">尽调</option>
+                <option value="follow_up">跟进</option>
+              </select>
+            </label>
+            <label>
+              投资机构
+              <input id="investor-org" type="text" value="启明增长基金" />
+            </label>
+          </div>
+
+          <label>
+            转写内容
+            <textarea
+              id="transcript"
+              placeholder="建议使用“投资人:”和“我:”作为说话人标记，便于系统识别问答。"
+            ></textarea>
+          </label>
+
+          <div class="submit-row">
+            <button id="analyze" class="primary">生成复盘</button>
+            <p id="status-text">等待输入会议内容。</p>
+          </div>
+        </section>
+
+        <section class="panel insights-panel">
+          <div class="panel-header">
+            <h2>分析概览</h2>
+          </div>
+
+          <div class="metrics-grid">
+            <article class="metric-card">
+              <span>累计会议</span>
+              <strong id="metric-total-meetings">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>累计问答对</span>
+              <strong id="metric-total-qa">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>平均评分</span>
+              <strong id="metric-average-score">-</strong>
+            </article>
+            <article class="metric-card">
+              <span>最热主题</span>
+              <strong id="metric-hottest-topic">-</strong>
+            </article>
+          </div>
+
+          <section class="card">
+            <h3>当前会议总评</h3>
+            <div id="overview" class="muted">
+              生成结果后，这里会显示本场会议总评、风格画像和最值得拿去申请预算的产品价值。
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>问答复盘</h3>
+            <div id="qa-list" class="qa-list empty">还没有问答结果。</div>
+          </section>
+        </section>
+
+        <section class="panel library-panel">
+          <section class="card">
+            <h3>会议历史</h3>
+            <div id="history-list" class="list-stack empty">还没有历史会议。</div>
+          </section>
+
+          <section class="card">
+            <h3>主题库</h3>
+            <div id="topics-list" class="list-stack empty">还没有主题。</div>
+          </section>
+
+          <section class="card">
+            <h3>标准话术</h3>
+            <div id="canonical-answer" class="muted">
+              选择一个主题后，这里会显示该主题的统一回答框架和注意事项。
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>新人培训话术</h3>
+            <pre id="training-script" class="script-box">还没有生成培训脚本。</pre>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/main.js" type="module"></script>
+  </body>
+</html>
