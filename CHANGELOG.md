@@ -1,10 +1,25 @@
 # Changelog
 
-This project follows a simple changelog discipline:
+## [0.2.1] - 2026-03-18
 
-- every user-visible feature change should be added here
-- every public release should have a version section
-- every breaking or notable behavior change should be called out explicitly
+### Added
+
+- bilingual repository entry points with English and Simplified Chinese README files
+- roadmap and contributing guides in both languages
+- one-click launcher that installs dependencies, starts the server, waits for readiness, and opens the browser
+- stop script for ending the local demo server cleanly
+- optional `env.local.ps1` flow for machine-local Kimi and ASR settings
+
+### Changed
+
+- refreshed the GitHub homepage copy to feel more product-oriented and demo-friendly
+- bumped the app version surfaced by the health endpoint to `0.2.1`
+- optimized setup so dependency installation is skipped when requirements are already up to date
+
+### Fixed
+
+- reduced friction for colleagues trying the demo on a fresh Windows machine
+- kept local machine settings out of git via `scripts/env.local.ps1`
 
 ## [0.2.0] - 2026-03-18
 
@@ -27,7 +42,7 @@ This project follows a simple changelog discipline:
 ### Fixed
 
 - improved Q&A extraction for freeform transcripts without explicit speaker labels
-- reduced investor/founder role mix-ups by normalizing transcripts before analysis
+- reduced investor and founder role mix-ups by normalizing transcripts before analysis
 - excluded generated share artifacts from git tracking
 
 ## [0.1.0] - 2026-03-18
@@ -39,4 +54,3 @@ This project follows a simple changelog discipline:
 - topic library, canonical answers, and training script generation
 - architecture and data pipeline documentation
 - sample transcript and baseline API tests
-

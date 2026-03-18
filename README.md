@@ -1,50 +1,75 @@
-# Investor Conversation Copilot
+<div align="center">
+  <h1>Investor Conversation Copilot</h1>
+  <p>Turn investor meetings into structured Q&A, answer reviews, reusable team messaging, and onboarding scripts.</p>
+  <p>
+    <a href="./README.md">English</a> |
+    <a href="./README.zh-CN.md">简体中文</a>
+  </p>
+  <p>
+    <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.1-0A66C2" />
+    <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
+    <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
+    <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
+  </p>
+</div>
 
-`Investor Conversation Copilot` is a demoable AI product for fundraising and investor meeting analysis.
+## Why This Exists
 
-It helps founders and fundraising teams turn repeated investor conversations into reusable operating assets:
+Founders and fundraising teams answer the same investor questions over and over, but the answers rarely get preserved as a consistent operating asset.
 
-- investor question library
-- answer quality review
-- personal speaking style analysis
-- canonical answers for onboarding
-- team-wide training scripts
+This project turns those repeated conversations into:
 
-Current public demo version: `0.2.0`
+- structured investor question libraries
+- answer quality reviews
+- speaking style summaries
+- canonical team answers
+- onboarding scripts for new teammates
 
-## What It Does
+## Product Flow
 
-- Accepts pasted transcripts or uploaded audio files.
-- Supports in-browser recording for quick demo capture.
-- Uses local `faster-whisper` for speech-to-text.
-- Optionally uses Moonshot / Kimi to improve transcript normalization and meeting analysis.
-- Extracts investor questions and founder answers.
-- Reviews answer quality across completeness, clarity, consistency, and evidence.
-- Summarizes speaking style and recurring communication patterns.
-- Builds a topic library, canonical answers, and onboarding scripts from cumulative meeting history.
+```mermaid
+flowchart LR
+    A["Audio or Transcript"] --> B["Transcription and Normalization"]
+    B --> C["Investor Q&A Extraction"]
+    C --> D["Answer Review"]
+    D --> E["Topic Library"]
+    D --> F["Canonical Answers"]
+    D --> G["Training Scripts"]
+```
 
-## Product Positioning
+## Product Snapshot
 
-This is not a generic meeting notes tool.
+| Area | What the demo already does |
+| --- | --- |
+| Input | Paste transcripts, upload audio, or record in the browser |
+| Analysis | Extract investor questions and founder answers |
+| Review | Score completeness, clarity, consistency, and evidence |
+| Knowledge | Build topic libraries and reusable answer patterns |
+| Enablement | Generate onboarding and training scripts |
+| AI | Use local rules by default and Moonshot / Kimi when available |
 
-The product is designed as a fundraising knowledge system:
+## Demo Highlights
 
-1. Capture investor conversations.
-2. Reconstruct structured Q&A.
-3. Review whether the answer actually addressed the investor concern.
-4. Build an evolving internal answer base.
-5. Generate consistent training scripts for new team members.
+- Transcript-first workflow for quick demos and low-friction testing
+- Local `faster-whisper` transcription for audio uploads
+- Optional Kimi-enhanced transcript normalization and answer review
+- Topic and canonical-answer views for message consistency
+- Browser workbench designed for internal budget and product demos
 
-## Stack
+## One-Click Local Demo
 
-- Backend: `FastAPI`
-- Frontend: `HTML + CSS + JavaScript`
-- Storage: local JSON state store
-- ASR: `faster-whisper`
-- Optional LLM enhancement: Moonshot / Kimi
-- Tests: `pytest`
+For the easiest Windows experience:
 
-## Quick Start
+1. Double-click [`start-demo.bat`](./start-demo.bat)
+2. Wait for setup and server startup
+3. The browser opens automatically at `http://127.0.0.1:8000`
+
+To stop the local server later:
+
+- double-click [`stop-demo.bat`](./stop-demo.bat)
+
+## Manual Setup
 
 1. Create a virtual environment.
 
@@ -66,38 +91,31 @@ $env:MOONSHOT_BASE_URL="https://api.moonshot.cn/v1"
 $env:MOONSHOT_MODEL="kimi-latest"
 ```
 
-4. Optional: configure local ASR.
+4. Start the app in the current shell.
 
 ```powershell
-$env:ASR_MODEL_SIZE="small"
-$env:ASR_DEVICE="cpu"
-$env:ASR_COMPUTE_TYPE="int8"
+.\scripts\run-demo.ps1
 ```
 
-5. Start the app.
-
-```powershell
-.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-6. Open the demo in a browser.
+5. Open the demo.
 
 ```text
 http://127.0.0.1:8000
 ```
 
-For Windows demos, prefer the command above instead of `--reload`, because stale reload processes can leave the port in a confusing state.
+## Optional Local Config
 
-## Demo Paths
+If you want the one-click launcher to use your preferred model settings automatically:
 
-- Load the sample transcript from [`samples/fundraising_transcript.txt`](samples/fundraising_transcript.txt)
-- Paste your own transcript
-- Upload an audio file
-- Record directly in the browser
+1. Copy [`scripts/env.example.ps1`](./scripts/env.example.ps1) to `scripts/env.local.ps1`
+2. Replace the placeholder values
+3. Run [`start-demo.bat`](./start-demo.bat)
+
+`env.local.ps1` is ignored by git and stays local to each machine.
 
 ## Runtime Health
 
-Check runtime status at:
+Runtime status is available at:
 
 - `GET /api/health`
 
@@ -128,45 +146,29 @@ The response includes:
 - `GET /api/topics/{topic_id}/canonical-answers`
 - `GET /api/training-scripts/latest`
 
-Interactive API docs:
+Interactive docs:
 
 - `http://127.0.0.1:8000/docs`
 
-## Project Structure
+## Repository Guide
 
-- `app/`: API, services, models, and static workbench
-- `docs/`: architecture and pipeline notes
-- `samples/`: sample fundraising transcript
-- `tests/`: API and workflow tests
-- `scripts/`: local setup and run helpers
-
-## Public Repo Conventions
-
-- Version is tracked in [`VERSION`](VERSION) and surfaced by the app health endpoint.
-- User-facing changes should be recorded in [`CHANGELOG.md`](CHANGELOG.md).
-- Planned next-stage work is tracked in [`ROADMAP.md`](ROADMAP.md).
-- Contribution flow is documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-## Share With Teammates
-
-Use the following helper files when sharing internally:
-
-- [`COLLEAGUE_SETUP.md`](COLLEAGUE_SETUP.md)
-- [`start-demo.bat`](start-demo.bat)
-- [`scripts/setup.ps1`](scripts/setup.ps1)
-- [`scripts/run-demo.ps1`](scripts/run-demo.ps1)
-- [`scripts/env.example.ps1`](scripts/env.example.ps1)
+- [Chinese README](./README.zh-CN.md)
+- [Roadmap](./ROADMAP.md)
+- [Chinese Roadmap](./ROADMAP.zh-CN.md)
+- [Contributing](./CONTRIBUTING.md)
+- [Chinese Contributing Guide](./CONTRIBUTING.zh-CN.md)
+- [Changelog](./CHANGELOG.md)
+- [Colleague Setup Guide (Chinese)](./COLLEAGUE_SETUP.md)
+- [Colleague Setup Guide (English)](./COLLEAGUE_SETUP.en.md)
+- [Architecture Notes](./docs/architecture.md)
+- [Data Model and Pipeline](./docs/data-model-and-pipeline.md)
 
 ## Security Notes
 
-- Never commit API keys to the repository.
-- Always provide Moonshot / Kimi credentials through environment variables.
-- Rotate any key that was ever pasted into chat logs or screenshots.
+- Never commit API keys or local environment files
+- Use environment variables for Moonshot / Kimi credentials
+- Rotate any key that has ever been pasted into chat logs or screenshots
 
-## Docs
+## License
 
-- [`docs/architecture.md`](docs/architecture.md)
-- [`docs/data-model-and-pipeline.md`](docs/data-model-and-pipeline.md)
-- [`ROADMAP.md`](ROADMAP.md)
-- [`CHANGELOG.md`](CHANGELOG.md)
-
+The repository is ready for an open-source license file, but the final license choice should be confirmed before publishing legal terms.

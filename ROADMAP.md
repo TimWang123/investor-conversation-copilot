@@ -1,69 +1,71 @@
 # Roadmap
 
-This roadmap keeps the project focused on the smallest set of features that can turn the demo into a real internal product.
+[English](./ROADMAP.md) | [简体中文](./ROADMAP.zh-CN.md)
+
+This roadmap keeps the project focused on the smallest set of features that can move it from a single-machine demo into a team-ready product.
 
 ## Product Goal
 
-Build a system that helps founders and fundraising teams:
+Build a system that helps fundraising teams:
 
 - capture investor conversations
 - evaluate answer quality
-- preserve institutional fundraising knowledge
-- keep team messaging consistent over time
+- preserve fundraising knowledge
+- keep messaging consistent across team members
 
-## Next Stage: v0.3.0 Internal Trial
+## v0.3.0 Internal Trial
 
-Target: make the product reliable enough for repeated internal use.
+Goal: make the product reliable enough for repeated internal use.
 
 Planned work:
 
-- async audio processing with progress states
-- stronger speaker-role reconstruction for real-world transcripts
+- async audio processing with visible progress states
+- stronger role reconstruction for real-world transcripts
 - exportable review summaries in Markdown or PDF
-- better error states and retry UX in the web workbench
+- better retry and failure handling in the workbench
 - more structured scoring dimensions for fundraising answers
 
-Exit criteria:
+Success criteria:
 
 - a 30 to 60 minute meeting can be uploaded without blocking the request lifecycle
-- transcript reconstruction is stable enough for internal demo data
-- a teammate can run the project locally and finish one end-to-end review without manual debugging
+- transcript reconstruction is stable enough for internal trial data
+- a teammate can complete an end-to-end review without manual debugging
 
-## Stage After That: v0.4.0 Team Rollout
+## v0.4.0 Team Rollout
 
-Target: move from local demo workflow to shared team usage.
+Goal: move from local demo workflow to shared team usage.
 
 Planned work:
 
-- PostgreSQL plus `pgvector` storage
-- multi-user team workspace model
-- approved canonical answer workflow
-- trend reporting across recurring investor topics
-- stronger model abstraction for swapping providers
+- PostgreSQL plus `pgvector`
+- multi-user workspace model
+- approved canonical-answer workflow
+- topic trend reporting
+- stronger provider abstraction for LLM switching
 
-Exit criteria:
+Success criteria:
 
 - multiple meetings can be searched and compared reliably
-- approved training scripts can be updated without editing raw JSON files
-- the team can see topic drift and answer consistency over time
+- approved scripts can be updated without editing raw JSON files
+- the team can track message drift over time
 
-## Longer-Term: v0.5.0 Cross-Device Product
+## v0.5.0 Cross-Device Product
 
-Target: support real mobile and desktop product usage.
+Goal: support real mobile and desktop product usage.
 
 Planned work:
 
-- Flutter client for desktop and mobile
+- Flutter clients for desktop and mobile
 - object storage for meeting audio
-- secure account and permission model
+- secure accounts and permission layers
 - hosted deployment and environment management
-- review queues and manager approval workflow
+- review queues and manager approval flow
 
-Exit criteria:
+Success criteria:
 
-- users can record and review from mobile and desktop devices
-- recordings and meeting reviews are stored outside local files
-- the product is ready for a managed pilot instead of a single-machine demo
+- users can record and review from both desktop and mobile devices
+- recordings and reviews are no longer tied to one local machine
+- the product is ready for a managed pilot
 
 ## Out of Scope for Now
 
@@ -71,4 +73,3 @@ Exit criteria:
 - investor outreach automation
 - production-grade access control
 - multilingual transcript correction workflows
-

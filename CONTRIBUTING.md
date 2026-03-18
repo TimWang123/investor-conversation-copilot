@@ -1,15 +1,17 @@
 # Contributing
 
+[English](./CONTRIBUTING.md) | [简体中文](./CONTRIBUTING.zh-CN.md)
+
 Thanks for contributing to `Investor Conversation Copilot`.
 
-## Development Setup
+## Local Setup
 
 1. Create a virtual environment.
 2. Install dependencies from `requirements.txt`.
-3. Start the app locally with:
+3. Start the app locally:
 
 ```powershell
-.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+.\scripts\run-demo.ps1
 ```
 
 4. Run tests before opening a pull request:
@@ -20,11 +22,11 @@ Thanks for contributing to `Investor Conversation Copilot`.
 
 ## Contribution Rules
 
-- Do not commit secrets, tokens, or local environment files.
-- Add or update tests for any behavior change that can be validated automatically.
-- Update `CHANGELOG.md` for user-visible features, fixes, or behavior changes.
-- Keep the demo path working: transcript input, audio upload, and dashboard review should remain functional.
-- Prefer small, reviewable pull requests.
+- Never commit secrets, tokens, or machine-local env files
+- Add or update tests for behavior changes that can be automated
+- Update `CHANGELOG.md` for user-visible changes
+- Keep the main demo path working: transcript input, audio upload, and review output
+- Prefer small pull requests with clear scope
 
 ## Pull Request Checklist
 
@@ -32,11 +34,10 @@ Thanks for contributing to `Investor Conversation Copilot`.
 - explain why it changed
 - list how it was tested
 - include screenshots when the UI changed
-- mention any roadmap impact or follow-up work
+- mention follow-up work if the feature is incomplete
 
-## Release Notes
+## Release Files
 
-- `VERSION` tracks the current demo release number
-- `CHANGELOG.md` tracks user-visible release history
-- `ROADMAP.md` tracks planned next steps
-
+- `VERSION` stores the current public demo version
+- `CHANGELOG.md` stores release history
+- `ROADMAP.md` stores planned milestones
