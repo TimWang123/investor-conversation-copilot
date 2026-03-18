@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose an improvement for the product, workflow, or infrastructure
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please describe the user problem first, then the feature you want.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user pain or team workflow problem does this address?
+      placeholder: Repeated investor meetings create inconsistent answers across team members.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Add an approved answer workflow with version history.
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Expected impact
+      options:
+        - Demo polish
+        - Internal trial usability
+        - Team collaboration
+        - Analytics and insight quality
+        - Infrastructure and scale
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: What would success look like?
+      placeholder: A new teammate can answer investor questions using one approved training script.
+

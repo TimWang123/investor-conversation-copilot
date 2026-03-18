@@ -15,6 +15,7 @@ MODELS_DIR = DATA_DIR / "models"
 MODELS_DIR.mkdir(exist_ok=True)
 
 STATE_FILE = Path(os.getenv("COPILOT_STATE_FILE", DATA_DIR / "app_state.json"))
+APP_VERSION = os.getenv("APP_VERSION", "0.2.0").strip() or "0.2.0"
 
 MOONSHOT_API_KEY = os.getenv("MOONSHOT_API_KEY", "").strip()
 MOONSHOT_BASE_URL = os.getenv("MOONSHOT_BASE_URL", "https://api.moonshot.cn/v1").rstrip("/")

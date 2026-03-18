@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup guide
+    url: https://github.com/TimWang123/investor-conversation-copilot/blob/master/README.md
+    about: Start here for local setup, runtime configuration, and demo usage.
+  - name: Roadmap
+    url: https://github.com/TimWang123/investor-conversation-copilot/blob/master/ROADMAP.md
+    about: Check planned milestones before opening a feature request.
+
