@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import HTTPException
+from pathlib import Path
 
-from app.config import SAMPLES_DIR
+from fastapi import HTTPException, UploadFile
+from app.config import SAMPLES_DIR, UPLOADS_DIR
 from app.models import (
     CreateMeetingRequest,
     DashboardSummary,
@@ -10,6 +11,7 @@ from app.models import (
     MeetingListItem,
     MeetingRecord,
     TopicDetail,
+    new_id,
 )
 from app.services.analysis import (
     build_canonical_answers,
@@ -17,12 +19,21 @@ from app.services.analysis import (
     build_training_script,
     process_meeting,
 )
+from app.services.llm_gateway import MoonshotGateway
+from app.services.transcription_service import FasterWhisperTranscriptionService
 from app.storage import JsonStateStore
 
 
 class MeetingService:
-    def __init__(self, store: JsonStateStore):
+    def __init__(
+        self,
+        store: JsonStateStore,
+        llm_gateway: MoonshotGateway | None = None,
+        transcription_service: FasterWhisperTranscriptionService | None = None,
+    ):
         self.store = store
+        self.llm_gateway = llm_gateway
+        self.transcription_service = transcription_service
 
     def get_sample_transcript(self) -> DemoSampleResponse:
         transcript_path = SAMPLES_DIR / "fundraising_transcript.txt"
@@ -43,20 +54,58 @@ class MeetingService:
             raise HTTPException(status_code=400, detail="transcript_text 不能为空。")
 
         history = self.store.list_meetings()
+        normalized_transcript = self._normalize_transcript_text(transcript_text)
         meeting = MeetingRecord(
             title=payload.title,
             meeting_type=payload.meeting_type,
             investor_org=payload.investor_org,
             investor_names=payload.investor_names,
             founder_participants=payload.founder_participants,
-            transcript_text=transcript_text,
+            transcript_text=normalized_transcript,
+            raw_transcript_text=transcript_text,
+            transcript_source="manual",
         )
+        return self._process_and_save_meeting(meeting, history)
+
+    async def create_meeting_from_audio(
+        self,
+        *,
+        title: str,
+        meeting_type: str,
+        investor_org: str,
+        audio_file: UploadFile,
+        transcript_source: str,
+    ) -> MeetingRecord:
+        if self.transcription_service is None:
+            raise HTTPException(status_code=503, detail="音频转写服务未启用。")
+        suffix = Path(audio_file.filename or "recording.webm").suffix or ".webm"
+        safe_name = f"{new_id('audio')}{suffix}"
+        target_path = UPLOADS_DIR / safe_name
+        payload = await audio_file.read()
+        if not payload:
+            raise HTTPException(status_code=400, detail="上传的音频文件为空。")
+        target_path.write_bytes(payload)
+
         try:
-            processed = process_meeting(meeting, history)
+            transcription = self.transcription_service.transcribe(target_path)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        self.store.save_meeting(processed)
-        return processed
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=500, detail=f"音频转写失败：{exc}") from exc
+
+        history = self.store.list_meetings()
+        normalized_source = transcript_source if transcript_source in {"audio_upload", "audio_recording"} else "audio_upload"
+        normalized_transcript = self._normalize_transcript_text(transcription.text)
+        meeting = MeetingRecord(
+            title=title.strip() or "未命名音频会议",
+            meeting_type=meeting_type,
+            investor_org=investor_org.strip(),
+            transcript_text=normalized_transcript,
+            raw_transcript_text=transcription.text,
+            transcript_source=normalized_source,
+            audio_filename=safe_name,
+        )
+        return self._process_and_save_meeting(meeting, history)
 
     def list_meetings(self) -> list[MeetingListItem]:
         meetings = self.store.list_meetings()
@@ -75,6 +124,8 @@ class MeetingService:
             processed = process_meeting(meeting, history)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if self.llm_gateway is not None:
+            processed = self.llm_gateway.enrich_meeting(processed, history)
         self.store.save_meeting(processed)
         return processed
 
@@ -124,6 +175,16 @@ class MeetingService:
             training_script=build_training_script(meetings),
         )
 
+    def llm_status(self) -> dict:
+        if self.llm_gateway is None:
+            return {"provider": None, "enabled": False, "model": None}
+        return self.llm_gateway.status()
+
+    def transcription_status(self) -> dict:
+        if self.transcription_service is None:
+            return {"provider": None, "enabled": False, "model": None, "device": None}
+        return self.transcription_service.status()
+
     def _to_meeting_list_item(self, meeting: MeetingRecord) -> MeetingListItem:
         return MeetingListItem(
             id=meeting.id,
@@ -137,3 +198,17 @@ class MeetingService:
             qa_count=len(meeting.qa_exchanges),
         )
 
+    def _process_and_save_meeting(self, meeting: MeetingRecord, history: list[MeetingRecord]) -> MeetingRecord:
+        try:
+            processed = process_meeting(meeting, history)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if self.llm_gateway is not None:
+            processed = self.llm_gateway.enrich_meeting(processed, history)
+        self.store.save_meeting(processed)
+        return processed
+
+    def _normalize_transcript_text(self, transcript_text: str) -> str:
+        if self.llm_gateway is None:
+            return transcript_text
+        return self.llm_gateway.normalize_transcript(transcript_text)

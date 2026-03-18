@@ -8,19 +8,51 @@ from app.api.routers.dashboard import router as dashboard_router
 from app.api.routers.demo import router as demo_router
 from app.api.routers.knowledge import router as knowledge_router
 from app.api.routers.meetings import router as meetings_router
-from app.config import STATE_FILE, STATIC_DIR
+from app.config import (
+    ASR_COMPUTE_TYPE,
+    ASR_DEVICE,
+    ASR_MODEL_SIZE,
+    MODELS_DIR,
+    MOONSHOT_API_KEY,
+    MOONSHOT_BASE_URL,
+    MOONSHOT_MODEL,
+    STATE_FILE,
+    STATIC_DIR,
+)
+from app.services.llm_gateway import MoonshotGateway
 from app.services.meeting_service import MeetingService
+from app.services.transcription_service import FasterWhisperTranscriptionService
 from app.storage import JsonStateStore
 
 
-def create_app(store: JsonStateStore | None = None) -> FastAPI:
+def create_app(
+    store: JsonStateStore | None = None,
+    meeting_service: MeetingService | None = None,
+) -> FastAPI:
     app = FastAPI(
         title="Investor Conversation Copilot",
         version="0.1.0",
         description="A demoable MVP for investor meeting analysis and training script generation.",
     )
     storage = store or JsonStateStore(STATE_FILE)
-    app.state.meeting_service = MeetingService(storage)
+    if meeting_service is None:
+        llm_gateway = MoonshotGateway(
+            api_key=MOONSHOT_API_KEY,
+            base_url=MOONSHOT_BASE_URL,
+            model=MOONSHOT_MODEL,
+        )
+        transcription_service = FasterWhisperTranscriptionService(
+            model_size=ASR_MODEL_SIZE,
+            device=ASR_DEVICE,
+            compute_type=ASR_COMPUTE_TYPE,
+            download_root=MODELS_DIR,
+        )
+        meeting_service = MeetingService(
+            storage,
+            llm_gateway=llm_gateway,
+            transcription_service=transcription_service,
+        )
+    app.state.meeting_service = meeting_service
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(demo_router)
@@ -34,7 +66,18 @@ def create_app(store: JsonStateStore | None = None) -> FastAPI:
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        llm = app.state.meeting_service.llm_status()
+        asr = app.state.meeting_service.transcription_status()
+        return {
+            "status": "ok",
+            "llm_provider": llm["provider"] or "disabled",
+            "llm_enabled": str(llm["enabled"]).lower(),
+            "llm_model": llm["model"] or "",
+            "asr_provider": asr["provider"] or "disabled",
+            "asr_enabled": str(asr["enabled"]).lower(),
+            "asr_model": asr["model"] or "",
+            "asr_device": asr.get("device") or "",
+        }
 
     return app
 

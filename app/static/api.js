@@ -36,6 +36,12 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
+  createMeetingFromAudio(formData) {
+    return request("/api/meetings/from-audio", {
+      method: "POST",
+      body: formData,
+    });
+  },
   getMeeting(meetingId) {
     return request(`/api/meetings/${meetingId}`);
   },
@@ -43,4 +49,3 @@ export const api = {
     return request(`/api/topics/${topicId}`);
   },
 };
-

@@ -61,6 +61,23 @@
             </label>
           </div>
 
+          <section class="audio-panel">
+            <div class="audio-panel-head">
+              <h3>音频入口</h3>
+              <p>可以直接上传音频文件，也可以在浏览器里录一段演示音频。</p>
+            </div>
+            <label>
+              上传音频文件
+              <input id="audio-file" type="file" accept="audio/*,.mp3,.wav,.m4a,.webm,.mp4" />
+            </label>
+            <div class="audio-actions">
+              <button id="record-start" type="button" class="ghost">开始录音</button>
+              <button id="record-stop" type="button" class="ghost" disabled>停止录音</button>
+              <button id="record-clear" type="button" class="ghost">清除音频</button>
+            </div>
+            <div id="audio-meta" class="audio-meta">当前未选择音频，将按文本模式分析。</div>
+          </section>
+
           <label>
             转写内容
             <textarea

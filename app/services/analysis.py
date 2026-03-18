@@ -102,13 +102,35 @@ EVIDENCE_MARKERS = (
 
 CAUTION_WORDS = ("目前", "阶段性", "正在", "预计", "计划", "谨慎", "验证", "观察")
 AGGRESSIVE_WORDS = ("一定", "绝对", "百分之百", "完全没有风险", "稳赢", "必然")
+QUESTION_HINTS = (
+    "?",
+    "？",
+    "吗",
+    "么",
+    "为什么",
+    "怎么",
+    "多少",
+    "是否",
+    "能否",
+    "能不能",
+    "有没有",
+    "请问",
+    "想问",
+    "想了解",
+    "方便讲讲",
+    "怎么看",
+    "是什么",
+    "会不会",
+)
 
 
 def process_meeting(meeting: MeetingRecord, history: list[MeetingRecord]) -> MeetingRecord:
     turns = parse_transcript(meeting.transcript_text)
     qa_exchanges = extract_qa_pairs(turns, history)
     if not qa_exchanges:
-        raise ValueError("没有从文本中识别出有效问答，请至少使用“投资人:”和“我:”这样的标记。")
+        qa_exchanges = extract_qa_pairs_from_freeform_text(meeting.transcript_text, history)
+    if not qa_exchanges:
+        raise ValueError("没有从文本中识别出有效问答。建议使用更清晰的录音，或在转写后补充基本标点和断句。")
 
     style_profile = summarize_style(qa_exchanges)
     meeting_review = build_meeting_review(qa_exchanges, style_profile)
@@ -147,25 +169,43 @@ def extract_qa_pairs(turns: list[TranscriptTurn], history: list[MeetingRecord]) 
         if not question_text or not answer_text:
             continue
 
-        topic_id, topic_name = classify_topic(question_text, answer_text)
-        historical_answers = [
-            qa.answer_text
-            for item in history
-            for qa in item.qa_exchanges
-            if qa.topic_id == topic_id
-        ]
-        review = review_answer(question_text, answer_text, topic_id, historical_answers)
-        qa_exchanges.append(
-            QAExchange(
-                question_text=question_text,
-                answer_text=answer_text,
-                topic_id=topic_id,
-                topic_name=topic_name,
-                question_intent=f"围绕{topic_name}的投资人关注点",
-                confidence=_confidence(question_text, answer_text),
-                review=review,
-            )
-        )
+        qa_exchanges.append(_build_qa_exchange(question_text, answer_text, history))
+
+    return qa_exchanges
+
+
+def extract_qa_pairs_from_freeform_text(
+    transcript_text: str,
+    history: list[MeetingRecord],
+) -> list[QAExchange]:
+    chunks = _segment_freeform_transcript(transcript_text)
+    if len(chunks) < 2:
+        return []
+
+    qa_exchanges: list[QAExchange] = []
+    index = 0
+    while index < len(chunks):
+        if not _looks_like_question_text(chunks[index]):
+            index += 1
+            continue
+
+        question_parts = [chunks[index]]
+        index += 1
+        while index < len(chunks) and _looks_like_question_text(chunks[index]):
+            question_parts.append(chunks[index])
+            index += 1
+
+        answer_parts: list[str] = []
+        while index < len(chunks) and not _looks_like_question_text(chunks[index]):
+            answer_parts.append(chunks[index])
+            index += 1
+
+        question_text = " ".join(part.strip() for part in question_parts if part.strip()).strip()
+        answer_text = " ".join(part.strip() for part in answer_parts if part.strip()).strip()
+        if not question_text or not answer_text:
+            continue
+
+        qa_exchanges.append(_build_qa_exchange(question_text, answer_text, history))
 
     return qa_exchanges
 
@@ -184,6 +224,30 @@ def classify_topic(question_text: str, answer_text: str) -> tuple[str, str]:
     if best_topic_id == "general":
         return "general", DEFAULT_TOPIC["name"]
     return best_topic_id, TOPIC_LIBRARY[best_topic_id]["name"]
+
+
+def _build_qa_exchange(
+    question_text: str,
+    answer_text: str,
+    history: list[MeetingRecord],
+) -> QAExchange:
+    topic_id, topic_name = classify_topic(question_text, answer_text)
+    historical_answers = [
+        qa.answer_text
+        for item in history
+        for qa in item.qa_exchanges
+        if qa.topic_id == topic_id
+    ]
+    review = review_answer(question_text, answer_text, topic_id, historical_answers)
+    return QAExchange(
+        question_text=question_text,
+        answer_text=answer_text,
+        topic_id=topic_id,
+        topic_name=topic_name,
+        question_intent=f"围绕{topic_name}的投资人关注点",
+        confidence=_confidence(question_text, answer_text),
+        review=review,
+    )
 
 
 def review_answer(
@@ -484,6 +548,47 @@ def _is_question_turn(turn: TranscriptTurn) -> bool:
     return turn.role == "investor" or any(token in turn.text for token in ("?", "？"))
 
 
+def _segment_freeform_transcript(transcript_text: str) -> list[str]:
+    normalized = transcript_text.replace("\r\n", "\n").replace("\r", "\n")
+    raw_parts = re.split(r"[\n]+|(?<=[。！？!?])", normalized)
+    chunks = []
+    for part in raw_parts:
+        text = re.sub(r"\s+", " ", part).strip()
+        if not text:
+            continue
+        chunks.append(text)
+    return _merge_short_chunks(chunks)
+
+
+def _merge_short_chunks(chunks: list[str]) -> list[str]:
+    merged: list[str] = []
+    for chunk in chunks:
+        if not merged:
+            merged.append(chunk)
+            continue
+
+        previous = merged[-1]
+        if len(chunk) <= 6 and not _looks_like_question_text(chunk):
+            merged[-1] = f"{previous}{chunk}"
+            continue
+
+        if len(previous) <= 6 and not _looks_like_question_text(previous) and not _looks_like_question_text(chunk):
+            merged[-1] = f"{previous}{chunk}"
+            continue
+
+        merged.append(chunk)
+    return merged
+
+
+def _looks_like_question_text(text: str) -> bool:
+    normalized = text.strip()
+    if not normalized:
+        return False
+    if normalized.endswith(("?", "？", "吗", "么")):
+        return True
+    return any(hint in normalized for hint in QUESTION_HINTS)
+
+
 def _score_brevity(answer_length: int) -> int:
     if answer_length < 45:
         return 58
@@ -578,4 +683,3 @@ def _dedupe_keep_order(values: list[str]) -> list[str]:
         seen.add(normalized)
         result.append(normalized)
     return result
-

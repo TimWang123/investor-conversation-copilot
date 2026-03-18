@@ -5,6 +5,11 @@ const elements = {
   meetingTypeInput: document.querySelector("#meeting-type"),
   investorOrgInput: document.querySelector("#investor-org"),
   transcriptInput: document.querySelector("#transcript"),
+  audioFileInput: document.querySelector("#audio-file"),
+  audioMeta: document.querySelector("#audio-meta"),
+  recordStartButton: document.querySelector("#record-start"),
+  recordStopButton: document.querySelector("#record-stop"),
+  recordClearButton: document.querySelector("#record-clear"),
   runtimeHint: document.querySelector("#runtime-hint"),
   statusText: document.querySelector("#status-text"),
   overview: document.querySelector("#overview"),
@@ -26,11 +31,20 @@ const state = {
   dashboard: null,
   currentMeeting: null,
   selectedTopicId: null,
+  audioBlob: null,
+  audioFilename: null,
+  audioSource: "audio_upload",
+  mediaRecorder: null,
+  mediaStream: null,
 };
 
 elements.loadSampleButton.addEventListener("click", loadSample);
 elements.analyzeButton.addEventListener("click", analyzeMeeting);
 elements.resetButton.addEventListener("click", resetDemo);
+elements.audioFileInput.addEventListener("change", handleAudioFileChange);
+elements.recordStartButton.addEventListener("click", startRecording);
+elements.recordStopButton.addEventListener("click", stopRecording);
+elements.recordClearButton.addEventListener("click", clearAudioSelection);
 
 bootstrap();
 
@@ -47,10 +61,17 @@ async function checkRuntime() {
   }
 
   try {
-    await api.health();
+    const health = await api.health();
     elements.runtimeHint.classList.add("ok");
-    elements.runtimeHint.innerHTML =
-      '后端连接正常。你现在可以载入示例，也可以直接粘贴新的会议转写。';
+    const llmHint =
+      health.llm_enabled === "true"
+        ? `模型增强已启用，当前使用 ${escapeHtml(health.llm_model || health.llm_provider)}。`
+        : "当前处于本地规则分析模式，接入环境变量后会自动切到 Kimi 增强模式。";
+    const asrHint =
+      health.asr_enabled === "true"
+        ? `音频转写已启用，当前使用 ${escapeHtml(health.asr_model || health.asr_provider)}。`
+        : "音频转写未启用。";
+    elements.runtimeHint.innerHTML = `后端连接正常。${llmHint} ${asrHint}`;
   } catch (error) {
     showRuntimeError(error, "后端未连接");
   }
@@ -59,6 +80,7 @@ async function checkRuntime() {
 async function loadSample() {
   try {
     setStatus("正在载入示例对话…");
+    clearAudioSelection({ silent: true });
     const sample = await api.sampleTranscript();
     elements.titleInput.value = sample.title;
     elements.meetingTypeInput.value = sample.meeting_type;
@@ -72,25 +94,24 @@ async function loadSample() {
 
 async function analyzeMeeting() {
   const transcriptText = elements.transcriptInput.value.trim();
-  if (!transcriptText) {
-    setStatus("请先输入会议转写内容。");
+  const hasAudio = Boolean(state.audioBlob);
+  if (!hasAudio && !transcriptText) {
+    setStatus("请先输入会议转写内容，或先上传/录制一段音频。");
     return;
   }
 
-  setStatus("正在分析会议内容，这一步会抽取问答、生成复盘并刷新知识库…");
+  setStatus(
+    hasAudio
+      ? "正在转写音频并生成复盘。第一次运行可能需要下载本地 ASR 模型，请稍等。"
+      : "正在分析会议内容，这一步会抽取问答、生成复盘并刷新知识库…"
+  );
   elements.overview.textContent = "处理中，请稍候。";
 
-  const payload = {
-    title: elements.titleInput.value.trim() || "未命名会议",
-    meeting_type: elements.meetingTypeInput.value,
-    investor_org: elements.investorOrgInput.value.trim(),
-    transcript_text: transcriptText,
-  };
-
   try {
-    const meeting = await api.createMeeting(payload);
+    const meeting = hasAudio ? await submitAudioMeeting() : await submitTranscriptMeeting(transcriptText);
     state.currentMeeting = meeting;
     state.selectedTopicId = meeting.qa_exchanges[0]?.topic_id || null;
+    elements.transcriptInput.value = meeting.transcript_text || transcriptText;
     await refreshDashboard();
     renderMeeting(meeting);
     if (state.selectedTopicId) {
@@ -109,6 +130,7 @@ async function resetDemo() {
     state.currentMeeting = null;
     state.selectedTopicId = null;
     elements.transcriptInput.value = "";
+    clearAudioSelection({ silent: true });
     renderEmptyDashboard();
     setStatus("演示数据已清空。");
   } catch (error) {
@@ -340,6 +362,107 @@ function setStatus(message) {
   elements.statusText.textContent = message;
 }
 
+async function submitTranscriptMeeting(transcriptText) {
+  return api.createMeeting({
+    title: elements.titleInput.value.trim() || "未命名会议",
+    meeting_type: elements.meetingTypeInput.value,
+    investor_org: elements.investorOrgInput.value.trim(),
+    transcript_text: transcriptText,
+  });
+}
+
+async function submitAudioMeeting() {
+  const formData = new FormData();
+  formData.append("title", elements.titleInput.value.trim() || "未命名音频会议");
+  formData.append("meeting_type", elements.meetingTypeInput.value);
+  formData.append("investor_org", elements.investorOrgInput.value.trim());
+  formData.append("transcript_source", state.audioSource);
+  formData.append("audio", state.audioBlob, state.audioFilename || "meeting.webm");
+  return api.createMeetingFromAudio(formData);
+}
+
+function handleAudioFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    clearAudioSelection({ silent: true });
+    return;
+  }
+  state.audioBlob = file;
+  state.audioFilename = file.name;
+  state.audioSource = "audio_upload";
+  renderAudioMeta(`已选择音频文件：${file.name}，大小 ${(file.size / 1024 / 1024).toFixed(2)} MB。点击“生成复盘”后会先自动转写。`);
+}
+
+async function startRecording() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setStatus("当前浏览器不支持录音，请改用音频文件上传。");
+    return;
+  }
+
+  try {
+    clearAudioSelection({ silent: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const chunks = [];
+    const recorder = new MediaRecorder(stream);
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    });
+    recorder.addEventListener("stop", () => {
+      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      state.audioBlob = blob;
+      state.audioFilename = `recording-${Date.now()}.webm`;
+      state.audioSource = "audio_recording";
+      renderAudioMeta(`已录制浏览器音频：${state.audioFilename}。点击“生成复盘”后会先自动转写。`);
+      stream.getTracks().forEach((track) => track.stop());
+      state.mediaRecorder = null;
+      state.mediaStream = null;
+      elements.recordStartButton.disabled = false;
+      elements.recordStopButton.disabled = true;
+    });
+    recorder.start();
+    state.mediaRecorder = recorder;
+    state.mediaStream = stream;
+    elements.recordStartButton.disabled = true;
+    elements.recordStopButton.disabled = false;
+    setStatus("正在录音，结束后点击“停止录音”。");
+    renderAudioMeta("录音中… 停止后会把这段音频用于自动转写。");
+  } catch (error) {
+    showRuntimeError(error, "录音启动失败");
+  }
+}
+
+function stopRecording() {
+  if (!state.mediaRecorder) {
+    return;
+  }
+  state.mediaRecorder.stop();
+  setStatus("录音已停止，正在准备音频。");
+}
+
+function clearAudioSelection(options = {}) {
+  if (state.mediaStream) {
+    state.mediaStream.getTracks().forEach((track) => track.stop());
+  }
+  state.mediaRecorder = null;
+  state.mediaStream = null;
+  state.audioBlob = null;
+  state.audioFilename = null;
+  state.audioSource = "audio_upload";
+  elements.audioFileInput.value = "";
+  elements.recordStartButton.disabled = false;
+  elements.recordStopButton.disabled = true;
+  renderAudioMeta("当前未选择音频，将按文本模式分析。");
+  if (!options.silent) {
+    setStatus("已清除音频选择。");
+  }
+}
+
+function renderAudioMeta(message) {
+  elements.audioMeta.textContent = message;
+}
+
 function labelMeetingType(value) {
   const mapping = {
     one_on_one: "一对一",
@@ -358,4 +481,3 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
-

@@ -57,7 +57,21 @@ def parse_transcript(transcript_text: str) -> list[TranscriptTurn]:
             )
             order += 1
         else:
-            current.text = f"{current.text} {line}".strip()
+            # Labeled blocks can continue across multiple lines, but unlabeled
+            # ASR output is usually already segmented per utterance and should
+            # not be merged into one giant turn.
+            if current.speaker != "未标记":
+                current.text = f"{current.text} {line}".strip()
+            else:
+                turns.append(current)
+                inferred_role = "investor" if _looks_like_question(line) else "founder"
+                current = TranscriptTurn(
+                    speaker="未标记",
+                    role=inferred_role,
+                    text=line,
+                    order=order,
+                )
+                order += 1
 
     if current is not None:
         turns.append(current)
@@ -121,4 +135,3 @@ def _normalize_unknown_roles(turns: list[TranscriptTurn]) -> list[TranscriptTurn
 
 def _flip_role(role: str) -> str:
     return "founder" if role == "investor" else "investor"
-

@@ -118,7 +118,8 @@ body {
 .actions,
 .metrics-grid,
 .pill-row,
-.score-grid {
+.score-grid,
+.audio-actions {
   display: flex;
   gap: 12px;
 }
@@ -155,6 +156,28 @@ label {
   display: block;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.audio-panel {
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(7, 11, 19, 0.42);
+}
+
+.audio-panel-head h3 {
+  margin: 0 0 6px;
+}
+
+.audio-panel-head p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.audio-meta {
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 input,

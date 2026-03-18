@@ -67,6 +67,9 @@ class MeetingRecord(BaseModel):
     investor_names: list[str] = Field(default_factory=list)
     founder_participants: list[str] = Field(default_factory=list)
     transcript_text: str
+    raw_transcript_text: str | None = None
+    transcript_source: Literal["manual", "audio_upload", "audio_recording"] = "manual"
+    audio_filename: str | None = None
     status: Literal["draft", "processed"] = "draft"
     created_at: str = Field(default_factory=utc_now_iso)
     processed_at: str | None = None
@@ -150,3 +153,10 @@ class DashboardSummary(BaseModel):
     recent_meetings: list[MeetingListItem] = Field(default_factory=list)
     topics: list[TopicSummary] = Field(default_factory=list)
     training_script: TrainingScript | None = None
+
+
+class TranscriptionResult(BaseModel):
+    text: str
+    language: str | None = None
+    duration_seconds: float | None = None
+    segments: list[dict] = Field(default_factory=list)
