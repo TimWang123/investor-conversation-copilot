@@ -70,6 +70,12 @@ To stop the local server later:
 
 - double-click [`stop-demo.bat`](./stop-demo.bat)
 
+## Desktop Download
+
+The GitHub "Download ZIP" button only downloads source code. It does not include the packaged `dist/` desktop app.
+
+If you want a ready-to-run Windows package, download the release asset from the repository's **Releases** page.
+
 ## Windows Desktop Build
 
 If you want a real desktop executable instead of a batch launcher:
