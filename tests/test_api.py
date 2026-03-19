@@ -215,6 +215,40 @@ def test_create_meeting_with_freeform_transcript_without_speaker_labels(tmp_path
     assert len(meeting["qa_exchanges"]) >= 2
 
 
+def test_create_meeting_with_multiline_follow_up_questions(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+
+    payload = {
+        "title": "多轮追问转写",
+        "meeting_type": "one_on_one",
+        "investor_org": "测试基金",
+        "transcript_text": (
+            "这款软件独特的竞争优势是什么\n"
+            "OK 我们过去12个月 ARR 从320万增长到了1280万\n"
+            "四季度的环比增长是18% 21% 23%和26%\n"
+            "目标新增客户主要来自于老客户转介绍和行业渠道合作\n"
+            "听起来增长数据不错\n"
+            "那软件的盈利模式是怎样的呢\n"
+            "我们现在的壁垒不是单一点 而是三层叠加\n"
+            "第一层是场景数据\n"
+            "我们已经累积了47家付费客户的真实流程数据\n"
+            "积累了不少数据呢\n"
+            "那第二层壁垒是什么呢\n"
+            "这些数据又如何帮助软件持续发展呢\n"
+            "我们从去年下半年开始严格看这组数据\n"
+            "平均目前是 CAC 大概在2.8万左右\n"
+            "首年合同额在9.6万左右\n"
+            "那客户的留存率怎么样呢\n"
+            "另外市场推广方面有什么计划\n"
+        ),
+    }
+
+    response = client.post("/api/meetings", json=payload)
+    assert response.status_code == 201
+    meeting = response.json()
+    assert len(meeting["qa_exchanges"]) >= 3
+
+
 def test_llm_normalizes_transcript_roles_before_analysis(tmp_path: Path) -> None:
     client = build_client_with_llm(tmp_path)
 
