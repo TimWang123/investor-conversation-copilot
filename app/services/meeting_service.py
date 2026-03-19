@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import subprocess
 
 from fastapi import HTTPException, UploadFile
@@ -142,6 +143,8 @@ class MeetingService:
         title: str,
         meeting_type: str,
         investor_org: str,
+        investor_names: str = "",
+        founder_participants: str = "",
         audio_file: UploadFile,
         transcript_source: str,
     ) -> MeetingRecord:
@@ -169,6 +172,8 @@ class MeetingService:
             title=title.strip() or "未命名音频会议",
             meeting_type=meeting_type,
             investor_org=investor_org.strip(),
+            investor_names=self._split_participant_input(investor_names),
+            founder_participants=self._split_participant_input(founder_participants),
             transcript_text=normalized_transcript,
             raw_transcript_text=transcription.text,
             transcript_source=normalized_source,
@@ -464,3 +469,7 @@ class MeetingService:
         if self.llm_gateway is None:
             return transcript_text
         return self.llm_gateway.normalize_transcript(transcript_text)
+
+    def _split_participant_input(self, raw_value: str) -> list[str]:
+        parts = re.split(r"[\n,，；;]+", raw_value)
+        return [part.strip() for part in parts if part.strip()]

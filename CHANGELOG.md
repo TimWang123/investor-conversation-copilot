@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0] - 2026-03-19
+
+### Added
+
+- multi-party meeting mode with participant roster inputs for investor-side and founder-side attendees
+- speaker-aware Q&A extraction that keeps track of who asked and who answered each question
+- multi-party review outputs including speaker performance, consistency risks, and unanswered follow-up questions
+
+### Changed
+
+- bumped the app version to `0.3.0`
+- expanded transcript parsing to recognize named speakers such as partners, CFOs, and other labeled participants
+- preserved structured speaker-labeled transcripts during LLM normalization instead of flattening them into one-on-one roles
+
 ## [0.2.5] - 2026-03-18
 
 ### Added

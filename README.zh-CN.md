@@ -8,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.5-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.3.0-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />

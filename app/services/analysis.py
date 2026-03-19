@@ -10,6 +10,7 @@ from app.models import (
     MeetingReview,
     QAExchange,
     QAReview,
+    SpeakerReview,
     StyleProfile,
     TopicSummary,
     TrainingScript,
@@ -125,7 +126,11 @@ QUESTION_HINTS = (
 
 
 def process_meeting(meeting: MeetingRecord, history: list[MeetingRecord]) -> MeetingRecord:
-    turns = parse_transcript(meeting.transcript_text)
+    turns = parse_transcript(
+        meeting.transcript_text,
+        investor_names=meeting.investor_names,
+        founder_participants=meeting.founder_participants,
+    )
     qa_exchanges = extract_qa_pairs(turns, history)
     if not qa_exchanges:
         qa_exchanges = extract_qa_pairs_from_freeform_text(meeting.transcript_text, history)
@@ -133,7 +138,7 @@ def process_meeting(meeting: MeetingRecord, history: list[MeetingRecord]) -> Mee
         raise ValueError("没有从文本中识别出有效问答。建议使用更清晰的录音，或在转写后补充基本标点和断句。")
 
     style_profile = summarize_style(qa_exchanges)
-    meeting_review = build_meeting_review(qa_exchanges, style_profile)
+    meeting_review = build_meeting_review(meeting, qa_exchanges, style_profile)
 
     meeting.qa_exchanges = qa_exchanges
     meeting.style_profile = style_profile
@@ -154,14 +159,18 @@ def extract_qa_pairs(turns: list[TranscriptTurn], history: list[MeetingRecord]) 
             continue
 
         question_parts = [turn.text]
+        question_speakers = [turn.speaker]
         index += 1
         while index < len(turns) and turns[index].role == "investor":
             question_parts.append(turns[index].text)
+            question_speakers.append(turns[index].speaker)
             index += 1
 
         answer_parts: list[str] = []
+        answer_speakers: list[str] = []
         while index < len(turns) and turns[index].role != "investor":
             answer_parts.append(turns[index].text)
+            answer_speakers.append(turns[index].speaker)
             index += 1
 
         question_text = " ".join(part.strip() for part in question_parts if part.strip()).strip()
@@ -169,7 +178,15 @@ def extract_qa_pairs(turns: list[TranscriptTurn], history: list[MeetingRecord]) 
         if not question_text or not answer_text:
             continue
 
-        qa_exchanges.append(_build_qa_exchange(question_text, answer_text, history))
+        qa_exchanges.append(
+            _build_qa_exchange(
+                question_text,
+                answer_text,
+                history,
+                question_speakers=_clean_speaker_names(question_speakers, fallback_role="investor"),
+                answer_speakers=_clean_speaker_names(answer_speakers, fallback_role="founder"),
+            )
+        )
 
     return qa_exchanges
 
@@ -205,7 +222,15 @@ def extract_qa_pairs_from_freeform_text(
         if not question_text or not answer_text:
             continue
 
-        qa_exchanges.append(_build_qa_exchange(question_text, answer_text, history))
+        qa_exchanges.append(
+            _build_qa_exchange(
+                question_text,
+                answer_text,
+                history,
+                question_speakers=["投资人"],
+                answer_speakers=["我方"],
+            )
+        )
 
     return qa_exchanges
 
@@ -230,6 +255,9 @@ def _build_qa_exchange(
     question_text: str,
     answer_text: str,
     history: list[MeetingRecord],
+    *,
+    question_speakers: list[str] | None = None,
+    answer_speakers: list[str] | None = None,
 ) -> QAExchange:
     topic_id, topic_name = classify_topic(question_text, answer_text)
     historical_answers = [
@@ -242,6 +270,8 @@ def _build_qa_exchange(
     return QAExchange(
         question_text=question_text,
         answer_text=answer_text,
+        question_speakers=question_speakers or [],
+        answer_speakers=answer_speakers or [],
         topic_id=topic_id,
         topic_name=topic_name,
         question_intent=f"围绕{topic_name}的投资人关注点",
@@ -377,7 +407,11 @@ def summarize_style(qa_exchanges: list[QAExchange]) -> StyleProfile:
     )
 
 
-def build_meeting_review(qa_exchanges: list[QAExchange], style_profile: StyleProfile) -> MeetingReview:
+def build_meeting_review(
+    meeting: MeetingRecord,
+    qa_exchanges: list[QAExchange],
+    style_profile: StyleProfile,
+) -> MeetingReview:
     overall_score = round(
         mean(
             (
@@ -409,17 +443,28 @@ def build_meeting_review(qa_exchanges: list[QAExchange], style_profile: StylePro
     for qa in qa_exchanges:
         suggestions.extend(qa.review.improvement_suggestions)
     top_improvements = _dedupe_keep_order(suggestions)[:4]
+    speaker_reviews = _build_speaker_reviews(meeting, qa_exchanges)
+    consistency_risks = _build_consistency_risks(meeting, qa_exchanges)
+    follow_up_questions = _find_follow_up_questions(meeting)
+    founder_speakers = [item.speaker_name for item in speaker_reviews if item.answer_count > 0]
 
     summary = (
         f"本场会议共识别出 {len(qa_exchanges)} 组有效问答。"
         f" 你的回答在 {', '.join(strongest_topics[:2]) or '核心主题'} 上较稳定，"
         f"但在 {', '.join(weakest_topics[:2]) or '部分主题'} 上仍有进一步标准化空间。"
     )
+    if meeting.meeting_type != "one_on_one" or len(founder_speakers) >= 2:
+        summary += (
+            f" 本场多人会议中，系统识别到 {len(founder_speakers) or 1} 位我方发言人参与回答，"
+            "已经开始按人拆分回答贡献和口径一致性。"
+        )
     consistency_assessment = (
         "当前回答风格已经具备可复用雏形，适合进一步沉淀为统一对外口径。"
         if overall_score >= 76
         else "当前回答具备亮点，但标准化程度还不够，建议优先把高频问题收敛成固定框架。"
     )
+    if consistency_risks:
+        consistency_assessment += " 本场会议存在需要重点对齐的多人口径风险。"
 
     return MeetingReview(
         meeting_summary=summary,
@@ -429,7 +474,135 @@ def build_meeting_review(qa_exchanges: list[QAExchange], style_profile: StylePro
         top_improvements=top_improvements,
         style_snapshot=style_profile.style_summary,
         consistency_assessment=consistency_assessment,
+        speaker_reviews=speaker_reviews,
+        consistency_risks=consistency_risks,
+        follow_up_questions=follow_up_questions,
     )
+
+
+def _build_speaker_reviews(meeting: MeetingRecord, qa_exchanges: list[QAExchange]) -> list[SpeakerReview]:
+    grouped: dict[str, list[QAExchange]] = defaultdict(list)
+    for qa in qa_exchanges:
+        for speaker in qa.answer_speakers:
+            grouped[speaker].append(qa)
+
+    ordered_names = _dedupe_keep_order(meeting.founder_participants + list(grouped.keys()))
+    reviews: list[SpeakerReview] = []
+    for speaker_name in ordered_names:
+        exchanges = grouped.get(speaker_name, [])
+        if not exchanges:
+            reviews.append(
+                SpeakerReview(
+                    speaker_name=speaker_name,
+                    role="founder",
+                    answer_count=0,
+                    average_score=None,
+                    strengths=[],
+                    risks=["本场会议未识别到该成员的有效回答。"],
+                )
+            )
+            continue
+
+        average_score = round(
+            mean(
+                (
+                    qa.review.completeness_score
+                    + qa.review.clarity_score
+                    + qa.review.consistency_score
+                    + qa.review.evidence_score
+                    + qa.review.brevity_score
+                    + qa.review.risk_score
+                )
+                / 6
+                for qa in exchanges
+            )
+        )
+        clarity_avg = mean(qa.review.clarity_score for qa in exchanges)
+        evidence_avg = mean(qa.review.evidence_score for qa in exchanges)
+        consistency_avg = mean(qa.review.consistency_score for qa in exchanges)
+        brevity_avg = mean(qa.review.brevity_score for qa in exchanges)
+
+        strengths: list[str] = []
+        risks: list[str] = []
+        if evidence_avg >= 78:
+            strengths.append("数据支撑较稳，适合承担指标类问题。")
+        if clarity_avg >= 78:
+            strengths.append("表达结构较清晰，适合正面承接投资人追问。")
+        if consistency_avg < 72:
+            risks.append("和历史口径或其他发言人的表述有一定漂移。")
+        if brevity_avg < 70:
+            risks.append("展开偏多，建议进一步收敛成固定答题框架。")
+        if evidence_avg < 70:
+            risks.append("证据密度偏弱，建议补足数字和经营事实。")
+
+        reviews.append(
+            SpeakerReview(
+                speaker_name=speaker_name,
+                role="founder",
+                answer_count=len(exchanges),
+                average_score=average_score,
+                strengths=_dedupe_keep_order(strengths),
+                risks=_dedupe_keep_order(risks),
+            )
+        )
+    return reviews
+
+
+def _build_consistency_risks(meeting: MeetingRecord, qa_exchanges: list[QAExchange]) -> list[str]:
+    risks: list[str] = []
+    active_founders = _dedupe_keep_order(
+        [speaker for qa in qa_exchanges for speaker in qa.answer_speakers if speaker not in {"我方", "未标注"}]
+    )
+    if (meeting.meeting_type != "one_on_one" or len(meeting.founder_participants) > 1) and len(active_founders) < 2:
+        risks.append("本场会议标记为多人场景，但当前只识别到一位我方主要回答人，建议补充发言人标签。")
+
+    topic_grouped: dict[str, list[QAExchange]] = defaultdict(list)
+    for qa in qa_exchanges:
+        topic_grouped[qa.topic_id].append(qa)
+
+    for exchanges in topic_grouped.values():
+        topic_name = exchanges[0].topic_name
+        speakers = _dedupe_keep_order(
+            [speaker for qa in exchanges for speaker in qa.answer_speakers if speaker not in {"我方", "未标注"}]
+        )
+        if len(speakers) < 2:
+            continue
+        overlap = _topic_answer_overlap(exchanges)
+        if overlap < 0.18:
+            risks.append(f"{topic_name} 由多人分别回答，但表述差异较大，建议统一成同一套外部口径。")
+
+    return _dedupe_keep_order(risks)[:4]
+
+
+def _find_follow_up_questions(meeting: MeetingRecord) -> list[str]:
+    turns = parse_transcript(
+        meeting.transcript_text,
+        investor_names=meeting.investor_names,
+        founder_participants=meeting.founder_participants,
+    )
+    pending: list[str] = []
+    index = 0
+    while index < len(turns):
+        if turns[index].role != "investor":
+            index += 1
+            continue
+
+        question_parts = [turns[index].text]
+        index += 1
+        while index < len(turns) and turns[index].role == "investor":
+            question_parts.append(turns[index].text)
+            index += 1
+
+        answered = False
+        while index < len(turns) and turns[index].role != "investor":
+            if turns[index].text.strip():
+                answered = True
+            index += 1
+
+        if not answered:
+            pending.append(" ".join(part.strip() for part in question_parts if part.strip()).strip())
+
+    return _dedupe_keep_order([item for item in pending if item])[:4]
 
 
 def build_topic_summaries(meetings: list[MeetingRecord]) -> list[TopicSummary]:
@@ -546,6 +719,35 @@ def build_training_script(meetings: list[MeetingRecord]) -> TrainingScript | Non
 
 def _is_question_turn(turn: TranscriptTurn) -> bool:
     return turn.role == "investor" or any(token in turn.text for token in ("?", "？"))
+
+
+def _clean_speaker_names(speakers: list[str], *, fallback_role: str) -> list[str]:
+    fallback = "投资人" if fallback_role == "investor" else "我方"
+    cleaned = [
+        speaker.strip()
+        for speaker in speakers
+        if speaker and speaker.strip() and speaker.strip() not in {"未标注", "UNKNOWN"}
+    ]
+    return _dedupe_keep_order(cleaned) or [fallback]
+
+
+def _topic_answer_overlap(exchanges: list[QAExchange]) -> float:
+    if len(exchanges) < 2:
+        return 1.0
+
+    overlaps: list[float] = []
+    for index, exchange in enumerate(exchanges):
+        current_tokens = _meaningful_tokens(exchange.answer_text)
+        if not current_tokens:
+            continue
+        for other in exchanges[index + 1 :]:
+            other_tokens = _meaningful_tokens(other.answer_text)
+            if not other_tokens:
+                continue
+            overlaps.append(len(current_tokens & other_tokens) / max(len(current_tokens | other_tokens), 1))
+    if not overlaps:
+        return 0.0
+    return max(overlaps)
 
 
 def _segment_freeform_transcript(transcript_text: str) -> list[str]:

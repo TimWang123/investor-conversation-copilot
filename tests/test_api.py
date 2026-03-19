@@ -212,7 +212,7 @@ def test_create_meeting_from_audio(tmp_path: Path) -> None:
     assert health_response.status_code == 200
     health = health_response.json()
     assert health["app_name"] == "天枢智元·融谈Copilot"
-    assert health["app_version"] == "0.2.5"
+    assert health["app_version"] == "0.3.0"
     assert health["asr_enabled"] == "true"
 
 
@@ -269,6 +269,41 @@ def test_create_meeting_with_multiline_follow_up_questions(tmp_path: Path) -> No
     assert response.status_code == 201
     meeting = response.json()
     assert len(meeting["qa_exchanges"]) >= 3
+
+
+def test_create_multi_party_meeting_tracks_speakers_and_follow_ups(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+
+    payload = {
+        "title": "多人尽调会",
+        "meeting_type": "multi_party",
+        "investor_org": "测试基金",
+        "investor_names": ["李合伙人", "王经理"],
+        "founder_participants": ["Tim", "CFO"],
+        "transcript_text": (
+            "李合伙人：这款产品的核心增长驱动是什么？\n"
+            "Tim：我们过去12个月 ARR 从320万增长到1280万，新增客户主要来自老客户转介绍。\n"
+            "王经理：毛利率和回本周期现在分别是多少？\n"
+            "CFO：综合毛利率目前在68%左右，销售回本周期控制在11个月内。\n"
+            "李合伙人：市场推广预算明年怎么分配？\n"
+            "Tim：我们会把预算拆成渠道、内容和客户成功三部分。\n"
+            "王经理：法务和合规的关键节点谁在负责？\n"
+        ),
+    }
+
+    response = client.post("/api/meetings", json=payload)
+    assert response.status_code == 201
+    meeting = response.json()
+    assert len(meeting["qa_exchanges"]) == 3
+    assert meeting["qa_exchanges"][0]["question_speakers"] == ["李合伙人"]
+    assert meeting["qa_exchanges"][0]["answer_speakers"] == ["Tim"]
+    assert meeting["qa_exchanges"][1]["answer_speakers"] == ["CFO"]
+
+    speaker_reviews = {item["speaker_name"]: item for item in meeting["review"]["speaker_reviews"]}
+    assert speaker_reviews["Tim"]["answer_count"] == 2
+    assert speaker_reviews["CFO"]["answer_count"] == 1
+    assert meeting["review"]["follow_up_questions"]
+    assert "法务和合规" in meeting["review"]["follow_up_questions"][0]
 
 
 def test_llm_normalizes_transcript_roles_before_analysis(tmp_path: Path) -> None:

@@ -8,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.5-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.3.0-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -45,6 +45,7 @@ flowchart LR
 | --- | --- |
 | Input | Paste transcripts, upload audio, or record in the browser |
 | Analysis | Extract investor questions and founder answers |
+| Multi-party | Track named speakers across investor partners, CEO, CFO, and other attendees |
 | Review | Score completeness, clarity, consistency, and evidence |
 | Knowledge | Build topic libraries and reusable answer patterns |
 | Enablement | Generate onboarding and training scripts |
@@ -57,6 +58,7 @@ flowchart LR
 - Optional Kimi-enhanced transcript normalization and answer review
 - Runtime settings page for switching ASR size/device and the active LLM provider/model
 - Topic and canonical-answer views for message consistency
+- Multi-party meeting MVP with speaker-aware reviews and unanswered follow-up tracking
 - Browser workbench designed for internal budget and product demos
 
 ## One-Click Local Demo

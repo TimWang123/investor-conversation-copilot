@@ -30,6 +30,8 @@ async def create_meeting_from_audio(
     title: Annotated[str, Form(...)],
     meeting_type: Annotated[str, Form()] = "one_on_one",
     investor_org: Annotated[str, Form()] = "",
+    investor_names: Annotated[str, Form()] = "",
+    founder_participants: Annotated[str, Form()] = "",
     transcript_source: Annotated[str, Form()] = "audio_upload",
     audio: UploadFile = File(...),
 ) -> MeetingRecord:
@@ -37,6 +39,8 @@ async def create_meeting_from_audio(
         title=title,
         meeting_type=meeting_type,
         investor_org=investor_org,
+        investor_names=investor_names,
+        founder_participants=founder_participants,
         audio_file=audio,
         transcript_source=transcript_source,
     )

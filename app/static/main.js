@@ -4,6 +4,8 @@ const elements = {
   titleInput: document.querySelector("#title"),
   meetingTypeInput: document.querySelector("#meeting-type"),
   investorOrgInput: document.querySelector("#investor-org"),
+  investorNamesInput: document.querySelector("#investor-names"),
+  founderParticipantsInput: document.querySelector("#founder-participants"),
   transcriptInput: document.querySelector("#transcript"),
   audioFileInput: document.querySelector("#audio-file"),
   audioMeta: document.querySelector("#audio-meta"),
@@ -202,6 +204,8 @@ async function loadSample() {
     elements.titleInput.value = sample.title;
     elements.meetingTypeInput.value = sample.meeting_type;
     elements.investorOrgInput.value = sample.investor_org;
+    elements.investorNamesInput.value = "";
+    elements.founderParticipantsInput.value = "";
     elements.transcriptInput.value = sample.transcript_text;
     setStatus("示例已载入，可以直接生成复盘。");
   } catch (error) {
@@ -304,6 +308,8 @@ async function resetDemo() {
     state.currentMeeting = null;
     state.selectedTopicId = null;
     elements.transcriptInput.value = "";
+    elements.investorNamesInput.value = "";
+    elements.founderParticipantsInput.value = "";
     clearAudioSelection({ silent: true });
     renderEmptyDashboard();
     setStatus("演示数据已清空。");
@@ -384,6 +390,24 @@ function renderMeeting(meeting) {
   const style = meeting.style_profile;
   const strongest = review?.strongest_topics?.join("、") || "待识别";
   const weakest = review?.weakest_topics?.join("、") || "待识别";
+  const participantSummary =
+    review?.speaker_reviews?.length
+      ? review.speaker_reviews
+          .map((item) => {
+            const score = item.average_score ?? "-";
+            const risks = item.risks?.length ? `；风险：${item.risks.join("；")}` : "";
+            return escapeHtml(`${item.speaker_name}（回答 ${item.answer_count} 次，均分 ${score}${risks}）`);
+          })
+          .join("<br />")
+      : "当前主要按整体回答风格复盘。";
+  const consistencyRisks =
+    review?.consistency_risks?.length
+      ? review.consistency_risks.map((item) => escapeHtml(`- ${item}`)).join("<br />")
+      : escapeHtml("未识别到明显的多人口径冲突。");
+  const followUpQuestions =
+    review?.follow_up_questions?.length
+      ? review.follow_up_questions.map((item) => escapeHtml(`- ${item}`)).join("<br />")
+      : escapeHtml("当前没有明显遗漏的待跟进问题。");
 
   elements.overview.innerHTML = `
     <strong>${escapeHtml(meeting.title)}</strong><br />
@@ -391,6 +415,9 @@ function renderMeeting(meeting) {
     <strong>风格画像：</strong>${escapeHtml(style?.style_summary ?? "待生成")}<br />
     <strong>亮点主题：</strong>${escapeHtml(strongest)}<br />
     <strong>优先补强：</strong>${escapeHtml(weakest)}<br />
+    <strong>我方发言人表现：</strong><br />${participantSummary}<br /><br />
+    <strong>多人会议一致性风险：</strong><br />${consistencyRisks}<br /><br />
+    <strong>待跟进问题：</strong><br />${followUpQuestions}<br /><br />
     <strong>预算汇报可讲价值：</strong>这套系统已经能把一场融资对话自动沉淀成“会议历史 + 主题库 + 标准话术 + 培训脚本”。
   `;
 
@@ -405,6 +432,8 @@ function renderMeeting(meeting) {
       const strengths = reviewItem?.strengths?.join("；") || "待补充";
       const weaknesses = reviewItem?.weaknesses?.join("；") || "暂无明显问题";
       const suggestions = reviewItem?.improvement_suggestions?.join("；") || "继续保持";
+      const questionSpeakers = (qa.question_speakers || []).join("、") || "投资人";
+      const answerSpeakers = (qa.answer_speakers || []).join("、") || "我方";
       return `
         <article class="qa-item">
           <h4>问答 ${index + 1} · ${escapeHtml(qa.topic_name)}</h4>
@@ -414,7 +443,9 @@ function renderMeeting(meeting) {
             <span class="pill">一致性 ${reviewItem.consistency_score}</span>
             <span class="pill">证据 ${reviewItem.evidence_score}</span>
           </div>
+          <p><strong>提问方：</strong>${escapeHtml(questionSpeakers)}</p>
           <p><strong>投资人：</strong>${escapeHtml(qa.question_text)}</p>
+          <p><strong>回答人：</strong>${escapeHtml(answerSpeakers)}</p>
           <p><strong>你的回答：</strong>${escapeHtml(qa.answer_text)}</p>
           <div class="score-grid">
             <div class="score-chip">简洁度<strong>${reviewItem.brevity_score}</strong></div>
@@ -543,6 +574,8 @@ async function submitTranscriptMeeting(transcriptText) {
     title: elements.titleInput.value.trim() || "未命名会议",
     meeting_type: elements.meetingTypeInput.value,
     investor_org: elements.investorOrgInput.value.trim(),
+    investor_names: splitParticipantNames(elements.investorNamesInput.value),
+    founder_participants: splitParticipantNames(elements.founderParticipantsInput.value),
     transcript_text: transcriptText,
   });
 }
@@ -552,6 +585,8 @@ async function submitAudioMeeting() {
   formData.append("title", elements.titleInput.value.trim() || "未命名音频会议");
   formData.append("meeting_type", elements.meetingTypeInput.value);
   formData.append("investor_org", elements.investorOrgInput.value.trim());
+  formData.append("investor_names", elements.investorNamesInput.value.trim());
+  formData.append("founder_participants", elements.founderParticipantsInput.value.trim());
   formData.append("transcript_source", state.audioSource);
   formData.append("audio", state.audioBlob, state.audioFilename || "meeting.webm");
   return api.createMeetingFromAudio(formData);
@@ -647,9 +682,17 @@ function labelMeetingType(value) {
     one_on_one: "一对一",
     roadshow: "路演",
     due_diligence: "尽调",
+    multi_party: "多人会议",
     follow_up: "跟进",
   };
   return mapping[value] || value;
+}
+
+function splitParticipantNames(value) {
+  return String(value || "")
+    .split(/[\n,，；;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function escapeHtml(value) {

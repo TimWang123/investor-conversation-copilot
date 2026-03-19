@@ -42,11 +42,22 @@ class QAExchange(BaseModel):
     id: str = Field(default_factory=lambda: new_id("qa"))
     question_text: str
     answer_text: str
+    question_speakers: list[str] = Field(default_factory=list)
+    answer_speakers: list[str] = Field(default_factory=list)
     topic_id: str
     topic_name: str
     question_intent: str
     confidence: float = 0.78
     review: QAReview
+
+
+class SpeakerReview(BaseModel):
+    speaker_name: str
+    role: Literal["investor", "founder"]
+    answer_count: int = 0
+    average_score: int | None = None
+    strengths: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
 
 
 class MeetingReview(BaseModel):
@@ -57,6 +68,9 @@ class MeetingReview(BaseModel):
     top_improvements: list[str] = Field(default_factory=list)
     style_snapshot: str
     consistency_assessment: str
+    speaker_reviews: list[SpeakerReview] = Field(default_factory=list)
+    consistency_risks: list[str] = Field(default_factory=list)
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class MeetingRecord(BaseModel):

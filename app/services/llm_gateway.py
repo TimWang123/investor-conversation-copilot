@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Protocol
 
 import httpx
@@ -332,4 +333,13 @@ def _normalize_score(value: Any, fallback: int) -> int:
 
 
 def _has_explicit_roles(transcript_text: str) -> bool:
-    return "投资人：" in transcript_text or "我：" in transcript_text
+    if "投资人：" in transcript_text or "我：" in transcript_text:
+        return True
+
+    for line in transcript_text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if re.match(r"^[A-Za-z0-9_\-\u4e00-\u9fff·（）() /]{1,24}\s*[:：]\s*", stripped):
+            return True
+    return False

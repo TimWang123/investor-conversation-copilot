@@ -54,7 +54,7 @@ def _load_default_app_version() -> str:
         version = VERSION_FILE.read_text(encoding="utf-8").strip()
         if version:
             return version
-    return "0.2.5"
+    return "0.3.0"
 
 
 def _candidate_settings_files() -> list[Path]:
