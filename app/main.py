@@ -9,6 +9,7 @@ from app.api.routers.demo import router as demo_router
 from app.api.routers.knowledge import router as knowledge_router
 from app.api.routers.meetings import router as meetings_router
 from app.config import (
+    APP_DISPLAY_NAME,
     APP_VERSION,
     ASR_COMPUTE_TYPE,
     ASR_DEVICE,
@@ -31,7 +32,7 @@ def create_app(
     meeting_service: MeetingService | None = None,
 ) -> FastAPI:
     app = FastAPI(
-        title="Investor Conversation Copilot",
+        title=APP_DISPLAY_NAME,
         version=APP_VERSION,
         description="A demoable MVP for investor meeting analysis and training script generation.",
     )
@@ -71,6 +72,7 @@ def create_app(
         asr = app.state.meeting_service.transcription_status()
         return {
             "status": "ok",
+            "app_name": APP_DISPLAY_NAME,
             "app_version": APP_VERSION,
             "llm_provider": llm["provider"] or "disabled",
             "llm_enabled": str(llm["enabled"]).lower(),

@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>Investor Conversation Copilot</h1>
+  <h1>天枢智元·融谈Copilot</h1>
+  <p><strong>Investor Conversation Copilot</strong></p>
   <p>Turn investor meetings into structured Q&A, answer reviews, reusable team messaging, and onboarding scripts.</p>
   <p>
     <a href="./README.md">English</a> |
@@ -7,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.2-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.3-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -69,6 +70,48 @@ To stop the local server later:
 
 - double-click [`stop-demo.bat`](./stop-demo.bat)
 
+## Windows Desktop Build
+
+If you want a real desktop executable instead of a batch launcher:
+
+1. Install desktop packaging dependencies.
+
+```powershell
+.\.venv\Scripts\python -m pip install -r requirements-desktop.txt
+```
+
+2. Build the desktop package.
+
+```powershell
+.\scripts\build-desktop.ps1 -Clean
+```
+
+3. Find the packaged app in:
+
+```text
+dist\天枢智元-融谈Copilot
+```
+
+4. Launch the packaged desktop app:
+
+```text
+dist\天枢智元-融谈Copilot\天枢智元-融谈Copilot.exe
+```
+
+The packaged desktop app runs the local service in the background and opens a native desktop window instead of a browser tab.
+
+## Desktop App Settings
+
+For packaged desktop builds, the app can read `settings.json` from the same folder as the exe.
+
+Fastest path:
+
+1. Copy [`settings.example.json`](./settings.example.json) to `settings.json`
+2. Replace the placeholder values
+3. Keep `settings.json` next to the packaged exe
+
+This is the easiest way to let a teammate use the same Kimi model configuration without touching system environment variables.
+
 ## Manual Setup
 
 1. Create a virtual environment.
@@ -122,6 +165,7 @@ Runtime status is available at:
 The response includes:
 
 - `status`
+- `app_name`
 - `app_version`
 - `llm_provider`
 - `llm_enabled`
@@ -160,6 +204,8 @@ Interactive docs:
 - [Changelog](./CHANGELOG.md)
 - [Colleague Setup Guide (Chinese)](./COLLEAGUE_SETUP.md)
 - [Colleague Setup Guide (English)](./COLLEAGUE_SETUP.en.md)
+- [Desktop Build Guide](./DESKTOP_BUILD.md)
+- [Desktop Build Guide (Chinese)](./DESKTOP_BUILD.zh-CN.md)
 - [Architecture Notes](./docs/architecture.md)
 - [Data Model and Pipeline](./docs/data-model-and-pipeline.md)
 - [License (English)](./LICENSE)

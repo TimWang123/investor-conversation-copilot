@@ -1,0 +1,8 @@
+{
+  "MOONSHOT_API_KEY": "replace-with-your-key",
+  "MOONSHOT_BASE_URL": "https://api.moonshot.cn/v1",
+  "MOONSHOT_MODEL": "kimi-latest",
+  "ASR_MODEL_SIZE": "small",
+  "ASR_DEVICE": "cpu",
+  "ASR_COMPUTE_TYPE": "int8"
+}

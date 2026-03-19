@@ -4,4 +4,6 @@ __pycache__/
 .pytest_cache/
 data/
 dist/
+build/
+*.spec
 scripts/env.local.ps1

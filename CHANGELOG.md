@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3] - 2026-03-18
+
+### Added
+
+- Windows desktop entry built on `pywebview`, so the app can run as a native desktop window
+- reproducible PyInstaller build script for generating a distributable exe package
+- local `settings.json` support for desktop builds, so packaged users can configure Kimi without editing environment variables
+
+### Changed
+
+- unified the product display name to `天枢智元·融谈Copilot`
+- updated the health endpoint to return the app display name
+- moved packaged-app data storage to a user-local writable directory when running from a frozen build
+
 ## [0.2.2] - 2026-03-18
 
 ### Added

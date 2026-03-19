@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>Investor Conversation Copilot</h1>
+  <h1>天枢智元·融谈Copilot</h1>
+  <p><strong>Investor Conversation Copilot</strong></p>
   <p>把投融资会话沉淀成结构化问答、回答复盘、统一话术和新人培训脚本。</p>
   <p>
     <a href="./README.md">English</a> |
@@ -7,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.2-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.3-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -154,6 +155,8 @@ $env:MOONSHOT_MODEL="kimi-latest"
 - [更新记录](./CHANGELOG.md)
 - [给同事的快速体验说明](./COLLEAGUE_SETUP.md)
 - [Colleague Setup Guide (English)](./COLLEAGUE_SETUP.en.md)
+- [Desktop Build Guide](./DESKTOP_BUILD.md)
+- [桌面版打包说明](./DESKTOP_BUILD.zh-CN.md)
 - [产品架构说明](./docs/architecture.md)
 - [数据模型与处理流程](./docs/data-model-and-pipeline.md)
 - [License](./LICENSE)
