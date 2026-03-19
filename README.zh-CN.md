@@ -8,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.3-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.4-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -48,7 +48,7 @@ flowchart LR
 | 复盘 | 从完整性、清晰度、一致性、证据支撑等角度评分 |
 | 沉淀 | 自动生成主题库和标准回答 |
 | 培训 | 生成统一培训脚本，帮助新人快速上手 |
-| AI | 默认本地规则分析，可选接入 Moonshot / Kimi 增强 |
+| AI | 默认本地规则分析，可选接入 Moonshot / Kimi 或 Qwen 增强 |
 
 ## 演示亮点
 
@@ -84,13 +84,16 @@ py -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-3. 如果需要，配置 Moonshot / Kimi
+3. 如果需要，配置 Moonshot / Kimi 或 Qwen
 
 ```powershell
-$env:MOONSHOT_API_KEY="replace-with-your-key"
-$env:MOONSHOT_BASE_URL="https://api.moonshot.cn/v1"
-$env:MOONSHOT_MODEL="kimi-latest"
+$env:LLM_PROVIDER="qwen"
+$env:QWEN_API_KEY="replace-with-your-key"
+$env:QWEN_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
+$env:QWEN_MODEL="qwen-plus"
 ```
+
+如果要切回 Moonshot / Kimi，把 `LLM_PROVIDER` 改成 `moonshot`，并使用 `MOONSHOT_API_KEY`、`MOONSHOT_BASE_URL`、`MOONSHOT_MODEL`。
 
 4. 手动以前台方式启动
 
@@ -165,7 +168,7 @@ $env:MOONSHOT_MODEL="kimi-latest"
 ## 安全提醒
 
 - 不要把 API key 或本地环境文件提交进仓库
-- Moonshot / Kimi 配置只通过环境变量传入
+- Moonshot / Kimi / Qwen 配置可通过环境变量或 `settings.json` 传入
 - 凡是出现在聊天记录或截图里的 key，都建议立即轮换
 
 ## License

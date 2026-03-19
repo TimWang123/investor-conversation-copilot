@@ -19,7 +19,7 @@ from app.services.analysis import (
     build_training_script,
     process_meeting,
 )
-from app.services.llm_gateway import MoonshotGateway
+from app.services.llm_gateway import LlmGateway
 from app.services.transcription_service import FasterWhisperTranscriptionService
 from app.storage import JsonStateStore
 
@@ -28,7 +28,7 @@ class MeetingService:
     def __init__(
         self,
         store: JsonStateStore,
-        llm_gateway: MoonshotGateway | None = None,
+        llm_gateway: LlmGateway | None = None,
         transcription_service: FasterWhisperTranscriptionService | None = None,
     ):
         self.store = store

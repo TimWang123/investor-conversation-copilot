@@ -14,14 +14,18 @@ from app.config import (
     ASR_COMPUTE_TYPE,
     ASR_DEVICE,
     ASR_MODEL_SIZE,
+    LLM_PROVIDER,
     MODELS_DIR,
     MOONSHOT_API_KEY,
     MOONSHOT_BASE_URL,
     MOONSHOT_MODEL,
+    QWEN_API_KEY,
+    QWEN_BASE_URL,
+    QWEN_MODEL,
     STATE_FILE,
     STATIC_DIR,
 )
-from app.services.llm_gateway import MoonshotGateway
+from app.services.llm_gateway import build_llm_gateway
 from app.services.meeting_service import MeetingService
 from app.services.transcription_service import FasterWhisperTranscriptionService
 from app.storage import JsonStateStore
@@ -38,10 +42,14 @@ def create_app(
     )
     storage = store or JsonStateStore(STATE_FILE)
     if meeting_service is None:
-        llm_gateway = MoonshotGateway(
-            api_key=MOONSHOT_API_KEY,
-            base_url=MOONSHOT_BASE_URL,
-            model=MOONSHOT_MODEL,
+        llm_gateway = build_llm_gateway(
+            provider=LLM_PROVIDER,
+            moonshot_api_key=MOONSHOT_API_KEY,
+            moonshot_base_url=MOONSHOT_BASE_URL,
+            moonshot_model=MOONSHOT_MODEL,
+            qwen_api_key=QWEN_API_KEY,
+            qwen_base_url=QWEN_BASE_URL,
+            qwen_model=QWEN_MODEL,
         )
         transcription_service = FasterWhisperTranscriptionService(
             model_size=ASR_MODEL_SIZE,

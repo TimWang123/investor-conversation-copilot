@@ -41,21 +41,22 @@ Important files:
 - `settings.example.json`
 - any files created by PyInstaller inside the output folder
 
-## Kimi Configuration for Packaged App
+## Model Configuration for Packaged App
 
 For the desktop package, the easiest configuration path is:
 
 1. Copy `settings.example.json` to `settings.json`
-2. Fill in the Moonshot / Kimi values
+2. Fill in the Qwen or Moonshot / Kimi values
 3. Keep `settings.json` next to the exe
 
 Example:
 
 ```json
 {
-  "MOONSHOT_API_KEY": "replace-with-your-key",
-  "MOONSHOT_BASE_URL": "https://api.moonshot.cn/v1",
-  "MOONSHOT_MODEL": "kimi-latest",
+  "LLM_PROVIDER": "qwen",
+  "QWEN_API_KEY": "replace-with-your-key",
+  "QWEN_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "QWEN_MODEL": "qwen-plus",
   "ASR_MODEL_SIZE": "small",
   "ASR_DEVICE": "cpu",
   "ASR_COMPUTE_TYPE": "int8"

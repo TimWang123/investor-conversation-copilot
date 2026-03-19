@@ -41,21 +41,22 @@ dist\天枢智元-融谈Copilot
 - `settings.example.json`
 - PyInstaller 自动生成的其余依赖文件
 
-## 打包版如何配置 Kimi
+## 打包版如何配置模型
 
-给桌面版配置 Kimi 最简单的方式是：
+给桌面版配置 Qwen 或 Kimi 最简单的方式是：
 
 1. 把 `settings.example.json` 复制为 `settings.json`
-2. 填入 Moonshot / Kimi 的配置
+2. 填入 Qwen 或 Moonshot / Kimi 的配置
 3. 把 `settings.json` 和 exe 放在同一个目录
 
 示例：
 
 ```json
 {
-  "MOONSHOT_API_KEY": "replace-with-your-key",
-  "MOONSHOT_BASE_URL": "https://api.moonshot.cn/v1",
-  "MOONSHOT_MODEL": "kimi-latest",
+  "LLM_PROVIDER": "qwen",
+  "QWEN_API_KEY": "replace-with-your-key",
+  "QWEN_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "QWEN_MODEL": "qwen-plus",
   "ASR_MODEL_SIZE": "small",
   "ASR_DEVICE": "cpu",
   "ASR_COMPUTE_TYPE": "int8"

@@ -1,15 +1,27 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 
 from app.models import MeetingRecord, MeetingReview, QAReview, StyleProfile
 
 
-class MoonshotGateway:
-    def __init__(self, api_key: str, base_url: str, model: str):
+class LlmGateway(Protocol):
+    @property
+    def enabled(self) -> bool: ...
+
+    def status(self) -> dict[str, Any]: ...
+
+    def normalize_transcript(self, transcript_text: str) -> str: ...
+
+    def enrich_meeting(self, meeting: MeetingRecord, history: list[MeetingRecord]) -> MeetingRecord: ...
+
+
+class OpenAICompatibleGateway:
+    def __init__(self, *, provider: str, api_key: str, base_url: str, model: str):
+        self.provider = provider
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -20,7 +32,7 @@ class MoonshotGateway:
 
     def status(self) -> dict[str, Any]:
         return {
-            "provider": "moonshot",
+            "provider": self.provider,
             "enabled": self.enabled,
             "model": self.model if self.enabled else None,
         }
@@ -167,29 +179,7 @@ class MoonshotGateway:
                 "content": json.dumps(prompt, ensure_ascii=False, indent=2),
             },
         ]
-        try:
-            with httpx.Client(timeout=60.0) as client:
-                response = client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": self.model,
-                        "messages": messages,
-                        "temperature": 0.2,
-                    },
-                )
-                response.raise_for_status()
-        except httpx.HTTPError:
-            return None
-
-        try:
-            content = response.json()["choices"][0]["message"]["content"]
-            return _extract_json(content)
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError):
-            return None
+        return self._post_chat_completion(messages=messages, temperature=0.2, timeout_seconds=60.0)
 
     def _run_transcript_reconstruction_prompt(self, transcript_text: str) -> dict[str, Any] | None:
         prompt = {
@@ -217,8 +207,17 @@ class MoonshotGateway:
                 "content": json.dumps(prompt, ensure_ascii=False, indent=2),
             },
         ]
+        return self._post_chat_completion(messages=messages, temperature=0.1, timeout_seconds=45.0)
+
+    def _post_chat_completion(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        temperature: float,
+        timeout_seconds: float,
+    ) -> dict[str, Any] | None:
         try:
-            with httpx.Client(timeout=45.0) as client:
+            with httpx.Client(timeout=timeout_seconds) as client:
                 response = client.post(
                     f"{self.base_url}/chat/completions",
                     headers={
@@ -228,7 +227,7 @@ class MoonshotGateway:
                     json={
                         "model": self.model,
                         "messages": messages,
-                        "temperature": 0.1,
+                        "temperature": temperature,
                     },
                 )
                 response.raise_for_status()
@@ -240,6 +239,42 @@ class MoonshotGateway:
             return _extract_json(content)
         except (KeyError, IndexError, TypeError, json.JSONDecodeError):
             return None
+
+
+class MoonshotGateway(OpenAICompatibleGateway):
+    def __init__(self, api_key: str, base_url: str, model: str):
+        super().__init__(provider="moonshot", api_key=api_key, base_url=base_url, model=model)
+
+
+class QwenGateway(OpenAICompatibleGateway):
+    def __init__(self, api_key: str, base_url: str, model: str):
+        super().__init__(provider="qwen", api_key=api_key, base_url=base_url, model=model)
+
+
+def build_llm_gateway(
+    *,
+    provider: str,
+    moonshot_api_key: str,
+    moonshot_base_url: str,
+    moonshot_model: str,
+    qwen_api_key: str,
+    qwen_base_url: str,
+    qwen_model: str,
+) -> OpenAICompatibleGateway | None:
+    normalized_provider = (provider or "auto").strip().lower()
+
+    if normalized_provider == "disabled":
+        return None
+    if normalized_provider in {"moonshot", "kimi"}:
+        return MoonshotGateway(api_key=moonshot_api_key, base_url=moonshot_base_url, model=moonshot_model)
+    if normalized_provider in {"qwen", "dashscope", "tongyi"}:
+        return QwenGateway(api_key=qwen_api_key, base_url=qwen_base_url, model=qwen_model)
+
+    if moonshot_api_key:
+        return MoonshotGateway(api_key=moonshot_api_key, base_url=moonshot_base_url, model=moonshot_model)
+    if qwen_api_key:
+        return QwenGateway(api_key=qwen_api_key, base_url=qwen_base_url, model=qwen_model)
+    return None
 
 
 def _history_context(history: list[MeetingRecord]) -> list[dict[str, Any]]:

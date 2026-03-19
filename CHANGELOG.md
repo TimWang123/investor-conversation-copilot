@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.4] - 2026-03-18
+
+### Added
+
+- configurable `LLM_PROVIDER` switch for choosing Moonshot / Kimi or Qwen
+- Qwen / DashScope OpenAI-compatible gateway support
+- Qwen examples in environment and desktop settings templates
+
+### Changed
+
+- bumped the app version to `0.2.4`
+- generalized the LLM integration from a Moonshot-only path to a provider-based path
+
 ## [0.2.3] - 2026-03-18
 
 ### Added

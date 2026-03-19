@@ -53,7 +53,7 @@ def _load_default_app_version() -> str:
         version = VERSION_FILE.read_text(encoding="utf-8").strip()
         if version:
             return version
-    return "0.2.3"
+    return "0.2.4"
 
 
 def _candidate_settings_files() -> list[Path]:
@@ -92,10 +92,17 @@ def _read_setting(name: str, default: str) -> str:
 APP_VERSION = os.getenv("APP_VERSION", _load_default_app_version()).strip() or _load_default_app_version()
 APP_DISPLAY_NAME = os.getenv("APP_DISPLAY_NAME", "天枢智元·融谈Copilot").strip() or "天枢智元·融谈Copilot"
 LOCAL_SETTINGS = _load_local_settings()
+LLM_PROVIDER = _read_setting("LLM_PROVIDER", "auto").lower()
 
 MOONSHOT_API_KEY = _read_setting("MOONSHOT_API_KEY", "")
 MOONSHOT_BASE_URL = _read_setting("MOONSHOT_BASE_URL", "https://api.moonshot.cn/v1").rstrip("/")
 MOONSHOT_MODEL = _read_setting("MOONSHOT_MODEL", "kimi-latest")
+
+QWEN_API_KEY = _read_setting("QWEN_API_KEY", "") or _read_setting("DASHSCOPE_API_KEY", "")
+QWEN_BASE_URL = _read_setting("QWEN_BASE_URL", "") or _read_setting(
+    "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+QWEN_MODEL = _read_setting("QWEN_MODEL", "") or _read_setting("DASHSCOPE_MODEL", "qwen-plus")
 
 ASR_MODEL_SIZE = _read_setting("ASR_MODEL_SIZE", "small")
 ASR_DEVICE = _read_setting("ASR_DEVICE", "cpu")

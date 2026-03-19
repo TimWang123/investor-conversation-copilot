@@ -8,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.3-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.4-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -48,7 +48,7 @@ flowchart LR
 | Review | Score completeness, clarity, consistency, and evidence |
 | Knowledge | Build topic libraries and reusable answer patterns |
 | Enablement | Generate onboarding and training scripts |
-| AI | Use local rules by default and Moonshot / Kimi when available |
+| AI | Use local rules by default and switch to Moonshot / Kimi or Qwen when configured |
 
 ## Demo Highlights
 
@@ -126,13 +126,16 @@ py -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-3. Optional: configure Moonshot / Kimi.
+3. Optional: configure Moonshot / Kimi or Qwen.
 
 ```powershell
-$env:MOONSHOT_API_KEY="replace-with-your-key"
-$env:MOONSHOT_BASE_URL="https://api.moonshot.cn/v1"
-$env:MOONSHOT_MODEL="kimi-latest"
+$env:LLM_PROVIDER="qwen"
+$env:QWEN_API_KEY="replace-with-your-key"
+$env:QWEN_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
+$env:QWEN_MODEL="qwen-plus"
 ```
+
+For Moonshot / Kimi, switch `LLM_PROVIDER` to `moonshot` and use `MOONSHOT_API_KEY`, `MOONSHOT_BASE_URL`, and `MOONSHOT_MODEL`.
 
 4. Start the app in the current shell.
 
@@ -214,7 +217,7 @@ Interactive docs:
 ## Security Notes
 
 - Never commit API keys or local environment files
-- Use environment variables for Moonshot / Kimi credentials
+- Use environment variables or `settings.json` for Moonshot / Kimi / Qwen credentials
 - Rotate any key that has ever been pasted into chat logs or screenshots
 
 ## License
