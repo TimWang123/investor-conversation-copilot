@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 
 from fastapi import HTTPException, UploadFile
 from app.config import (
@@ -43,6 +44,15 @@ class MeetingService:
         SettingOption(value="large-v3", label="large-v3", description="准确率更强，但更慢，更适合高配机器。"),
         SettingOption(value="turbo", label="turbo", description="偏高配场景，追求更快的大模型转写体验。"),
     ]
+    CPU_COMPUTE_OPTIONS = [
+        SettingOption(value="int8", label="int8", description="默认推荐，CPU 上更省内存、更稳。"),
+        SettingOption(value="float32", label="float32", description="更重更慢，适合少量高精度 CPU 测试。"),
+    ]
+    CUDA_COMPUTE_OPTIONS = [
+        SettingOption(value="float16", label="float16", description="默认推荐，适合大多数 NVIDIA GPU。"),
+        SettingOption(value="int8_float16", label="int8_float16", description="更省显存，适合显存更紧张的 GPU。"),
+        SettingOption(value="int8", label="int8", description="进一步压缩显存占用，但速度和精度可能略有波动。"),
+    ]
 
     def __init__(
         self,
@@ -55,6 +65,7 @@ class MeetingService:
         self.llm_gateway = llm_gateway
         self.transcription_service = transcription_service
         self.settings_file = settings_file
+        self._hardware_probe_cache: tuple[bool, str | None] | None = None
 
     def get_sample_transcript(self) -> DemoSampleResponse:
         transcript_path = SAMPLES_DIR / "fundraising_transcript.txt"
@@ -203,7 +214,7 @@ class MeetingService:
 
     def transcription_status(self) -> dict:
         if self.transcription_service is None:
-            return {"provider": None, "enabled": False, "model": None, "device": None}
+            return {"provider": None, "enabled": False, "model": None, "device": None, "compute_type": None}
         return self.transcription_service.status()
 
     def get_app_settings(self) -> AppSettingsResponse:
@@ -211,38 +222,110 @@ class MeetingService:
         model_size = status.get("model") or ASR_MODEL_SIZE
         device = status.get("device") or getattr(self.transcription_service, "device", ASR_DEVICE)
         compute_type = getattr(self.transcription_service, "compute_type", ASR_COMPUTE_TYPE)
+        device_options = self._device_options(current_device=device)
+        compute_type_options = self._compute_type_options(device=device)
         return AppSettingsResponse(
             asr={
                 "model_size": model_size,
                 "device": device,
                 "compute_type": compute_type,
-                "options": self.ASR_MODEL_OPTIONS,
-                "note": "切换新档位后，下一次做音频转写时会下载对应模型；之后会复用本地缓存。",
+                "model_options": self.ASR_MODEL_OPTIONS,
+                "device_options": device_options,
+                "compute_type_options": compute_type_options,
+                "note": self._settings_note(device=device),
             }
         )
 
     def update_asr_settings(self, payload: UpdateAsrSettingsRequest) -> AppSettingsResponse:
-        allowed_values = {option.value for option in self.ASR_MODEL_OPTIONS}
-        if payload.model_size not in allowed_values:
+        allowed_model_values = {option.value for option in self.ASR_MODEL_OPTIONS}
+        if payload.model_size not in allowed_model_values:
             raise HTTPException(status_code=400, detail="不支持的 ASR_MODEL_SIZE。")
+        if payload.device not in {"cpu", "cuda"}:
+            raise HTTPException(status_code=400, detail="不支持的 ASR_DEVICE。")
+        allowed_compute_values = {option.value for option in self._compute_type_options(device=payload.device)}
+        if payload.compute_type not in allowed_compute_values:
+            raise HTTPException(status_code=400, detail="当前设备不支持这个 ASR_COMPUTE_TYPE。")
+        if payload.device == "cuda" and not self._cuda_available():
+            raise HTTPException(
+                status_code=400,
+                detail="当前机器未检测到可用的 NVIDIA CUDA 环境。AMD 或未安装 CUDA 的机器请继续使用 CPU。",
+            )
 
-        current_device = getattr(self.transcription_service, "device", ASR_DEVICE)
-        current_compute_type = getattr(self.transcription_service, "compute_type", ASR_COMPUTE_TYPE)
         self.transcription_service = FasterWhisperTranscriptionService(
             model_size=payload.model_size,
-            device=current_device,
-            compute_type=current_compute_type,
+            device=payload.device,
+            compute_type=payload.compute_type,
             download_root=MODELS_DIR,
         )
         save_local_settings(
             {
                 "ASR_MODEL_SIZE": payload.model_size,
-                "ASR_DEVICE": current_device,
-                "ASR_COMPUTE_TYPE": current_compute_type,
+                "ASR_DEVICE": payload.device,
+                "ASR_COMPUTE_TYPE": payload.compute_type,
             },
             target_path=self.settings_file,
         )
         return self.get_app_settings()
+
+    def _cuda_available(self) -> bool:
+        available, _ = self._probe_nvidia_hardware()
+        return available
+
+    def _probe_nvidia_hardware(self) -> tuple[bool, str | None]:
+        if self._hardware_probe_cache is not None:
+            return self._hardware_probe_cache
+
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            self._hardware_probe_cache = (False, None)
+            return self._hardware_probe_cache
+
+        if result.returncode != 0:
+            self._hardware_probe_cache = (False, None)
+            return self._hardware_probe_cache
+
+        gpu_name = next((line.strip() for line in result.stdout.splitlines() if line.strip()), None)
+        self._hardware_probe_cache = (bool(gpu_name), gpu_name)
+        return self._hardware_probe_cache
+
+    def _device_options(self, current_device: str) -> list[SettingOption]:
+        has_cuda, gpu_name = self._probe_nvidia_hardware()
+        options = [
+            SettingOption(value="cpu", label="CPU", description="通用模式，适合所有机器，也兼容 AMD 显卡环境。"),
+        ]
+        if has_cuda or current_device == "cuda":
+            gpu_label = f"NVIDIA GPU ({gpu_name})" if gpu_name else "NVIDIA GPU"
+            options.append(
+                SettingOption(
+                    value="cuda",
+                    label="GPU / CUDA",
+                    description=f"检测到 {gpu_label}。需要本机已安装 CUDA 12 与 cuDNN 9 运行库。",
+                )
+            )
+        return options
+
+    def _compute_type_options(self, device: str) -> list[SettingOption]:
+        if device == "cuda":
+            return self.CUDA_COMPUTE_OPTIONS
+        return self.CPU_COMPUTE_OPTIONS
+
+    def _settings_note(self, device: str) -> str:
+        has_cuda, gpu_name = self._probe_nvidia_hardware()
+        common_note = "切换新档位后，第一次做音频转写时会下载对应模型；之后会复用本地缓存。"
+        if device == "cuda":
+            return (
+                f"{common_note} 当前选择的是 GPU / CUDA 模式。若转写时报错，请检查本机是否安装了 CUDA 12 和 cuDNN 9。"
+            )
+        if has_cuda and gpu_name:
+            return f"{common_note} 已检测到 {gpu_name}，如果你想提速，可以切换到 GPU / CUDA。"
+        return f"{common_note} 当前机器未检测到受支持的 NVIDIA CUDA 环境；AMD 或其他显卡环境建议继续使用 CPU。"
 
     def _to_meeting_list_item(self, meeting: MeetingRecord) -> MeetingListItem:
         return MeetingListItem(

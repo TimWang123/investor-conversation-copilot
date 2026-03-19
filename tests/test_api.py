@@ -17,6 +17,7 @@ class FakeTranscriptionService:
             "enabled": True,
             "model": "fake-small",
             "device": "cpu",
+            "compute_type": "int8",
         }
 
     def transcribe(self, audio_path: Path, language: str | None = "zh") -> TranscriptionResult:
@@ -134,16 +135,36 @@ def test_settings_endpoint_updates_asr_model_size(tmp_path: Path) -> None:
     assert settings_response.status_code == 200
     settings = settings_response.json()
     assert settings["asr"]["model_size"] == "fake-small"
-    assert settings["asr"]["options"]
+    assert settings["asr"]["model_options"]
+    assert settings["asr"]["device_options"]
+    assert settings["asr"]["compute_type_options"]
 
-    update_response = client.post("/api/settings/asr", json={"model_size": "medium"})
+    update_response = client.post(
+        "/api/settings/asr",
+        json={"model_size": "medium", "device": "cpu", "compute_type": "int8"},
+    )
     assert update_response.status_code == 200
     updated = update_response.json()
     assert updated["asr"]["model_size"] == "medium"
     assert updated["asr"]["device"] == "cpu"
+    assert updated["asr"]["compute_type"] == "int8"
 
     saved_settings = (tmp_path / "settings.json").read_text(encoding="utf-8")
     assert '"ASR_MODEL_SIZE": "medium"' in saved_settings
+    assert '"ASR_DEVICE": "cpu"' in saved_settings
+    assert '"ASR_COMPUTE_TYPE": "int8"' in saved_settings
+
+
+def test_settings_endpoint_rejects_cuda_without_supported_runtime(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+    client.app.state.meeting_service._hardware_probe_cache = (False, None)
+
+    response = client.post(
+        "/api/settings/asr",
+        json={"model_size": "small", "device": "cuda", "compute_type": "float16"},
+    )
+    assert response.status_code == 400
+    assert "CUDA" in response.json()["detail"]
 
 
 def test_create_meeting_from_audio(tmp_path: Path) -> None:

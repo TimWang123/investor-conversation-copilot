@@ -172,7 +172,9 @@ class AsrSettingsPayload(BaseModel):
     model_size: str
     device: str
     compute_type: str
-    options: list[SettingOption] = Field(default_factory=list)
+    model_options: list[SettingOption] = Field(default_factory=list)
+    device_options: list[SettingOption] = Field(default_factory=list)
+    compute_type_options: list[SettingOption] = Field(default_factory=list)
     note: str = ""
 
 
@@ -182,3 +184,5 @@ class AppSettingsResponse(BaseModel):
 
 class UpdateAsrSettingsRequest(BaseModel):
     model_size: str
+    device: str
+    compute_type: str

@@ -91,7 +91,7 @@ def create_app(
             "asr_enabled": str(asr["enabled"]).lower(),
             "asr_model": asr["model"] or "",
             "asr_device": asr.get("device") or "",
-            "asr_compute_type": getattr(app.state.meeting_service.transcription_service, "compute_type", ""),
+            "asr_compute_type": asr.get("compute_type") or "",
         }
 
     return app

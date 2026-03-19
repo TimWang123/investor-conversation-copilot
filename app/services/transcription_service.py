@@ -33,6 +33,7 @@ class FasterWhisperTranscriptionService:
             "enabled": self.enabled,
             "model": self.model_size,
             "device": self.device,
+            "compute_type": self.compute_type,
         }
 
     def transcribe(self, audio_path: Path, language: str | None = "zh") -> TranscriptionResult:
@@ -91,4 +92,3 @@ class FasterWhisperTranscriptionService:
                 download_root=str(self.download_root),
             )
         return self._model
-

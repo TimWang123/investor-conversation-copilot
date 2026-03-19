@@ -83,21 +83,31 @@
           <section class="audio-panel settings-panel">
             <div class="audio-panel-head">
               <h3>运行设置</h3>
-              <p>在这里切换本地语音转写模型档位。新档位首次用于音频分析时会下载对应模型，后续会直接复用本地缓存。</p>
+              <p>你可以在这里切换 ASR 模型档位、CPU / GPU 设备和计算类型。新档位首次用于音频分析时会下载对应模型，后续会直接复用本地缓存。</p>
             </div>
             <div class="grid two settings-grid">
               <label>
                 ASR 模型档位
                 <select id="setting-asr-model-size"></select>
               </label>
+              <label>
+                ASR 设备
+                <select id="setting-asr-device"></select>
+              </label>
+            </div>
+            <div class="grid two settings-grid">
+              <label>
+                计算类型
+                <select id="setting-asr-compute-type"></select>
+              </label>
               <div class="settings-readout">
-                <div><strong>当前设备:</strong><span id="setting-asr-device">cpu</span></div>
-                <div><strong>计算类型:</strong><span id="setting-asr-compute-type">int8</span></div>
+                <div><strong>当前生效设备:</strong><span id="setting-asr-current-device">cpu</span></div>
+                <div><strong>当前生效计算类型:</strong><span id="setting-asr-current-compute-type">int8</span></div>
               </div>
             </div>
             <div class="submit-row settings-row">
               <button id="save-settings" type="button" class="ghost">保存设置</button>
-              <p id="settings-status">默认推荐使用 small，适合大多数普通 Windows 电脑演示。</p>
+              <p id="settings-status">默认推荐使用 CPU + small，适合大多数普通 Windows 电脑演示。</p>
             </div>
           </section>
 

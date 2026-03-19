@@ -13,6 +13,8 @@ const elements = {
   settingsAsrModelSize: document.querySelector("#setting-asr-model-size"),
   settingsAsrDevice: document.querySelector("#setting-asr-device"),
   settingsAsrComputeType: document.querySelector("#setting-asr-compute-type"),
+  settingsCurrentDevice: document.querySelector("#setting-asr-current-device"),
+  settingsCurrentComputeType: document.querySelector("#setting-asr-current-compute-type"),
   settingsSaveButton: document.querySelector("#save-settings"),
   settingsStatus: document.querySelector("#settings-status"),
   runtimeHint: document.querySelector("#runtime-hint"),
@@ -51,6 +53,7 @@ elements.audioFileInput.addEventListener("change", handleAudioFileChange);
 elements.recordStartButton.addEventListener("click", startRecording);
 elements.recordStopButton.addEventListener("click", stopRecording);
 elements.recordClearButton.addEventListener("click", clearAudioSelection);
+elements.settingsAsrDevice.addEventListener("change", handleSettingsDeviceChange);
 elements.settingsSaveButton.addEventListener("click", saveSettings);
 
 bootstrap();
@@ -77,7 +80,7 @@ async function checkRuntime() {
         : "当前处于本地规则分析模式。";
     const asrHint =
       health.asr_enabled === "true"
-        ? `音频转写已启用，当前模型是 ${escapeHtml(health.asr_model || health.asr_provider)}，设备为 ${escapeHtml(health.asr_device || "cpu")}。`
+        ? `音频转写已启用，当前模型是 ${escapeHtml(health.asr_model || health.asr_provider)}，设备为 ${escapeHtml(health.asr_device || "cpu")}，计算类型为 ${escapeHtml(health.asr_compute_type || "int8")}。`
         : "音频转写未启用。";
     elements.runtimeHint.innerHTML = `后端连接正常。${llmHint} ${asrHint}`;
   } catch (error) {
@@ -93,6 +96,60 @@ async function loadSettings() {
   } catch (error) {
     elements.settingsStatus.textContent = "设置加载失败，请检查后端是否已启动。";
   }
+}
+
+function renderSettings(settings) {
+  const asr = settings.asr;
+  renderSelectOptions(elements.settingsAsrModelSize, asr.model_options, asr.model_size);
+  renderSelectOptions(elements.settingsAsrDevice, asr.device_options, asr.device);
+  renderComputeTypeOptions(asr.compute_type_options, asr.compute_type);
+  elements.settingsCurrentDevice.textContent = asr.device || "cpu";
+  elements.settingsCurrentComputeType.textContent = asr.compute_type || "int8";
+  elements.settingsStatus.textContent = asr.note || "可以在这里调整本地转写模型配置。";
+}
+
+function renderSelectOptions(selectElement, options, selectedValue) {
+  selectElement.innerHTML = options
+    .map((option) => {
+      const selected = option.value === selectedValue ? " selected" : "";
+      return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)} - ${escapeHtml(option.description)}</option>`;
+    })
+    .join("");
+}
+
+function renderComputeTypeOptions(options, selectedValue) {
+  elements.settingsAsrComputeType.innerHTML = options
+    .map((option) => {
+      const selected = option.value === selectedValue ? " selected" : "";
+      return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)} - ${escapeHtml(option.description)}</option>`;
+    })
+    .join("");
+}
+
+function handleSettingsDeviceChange() {
+  if (!state.settings) {
+    return;
+  }
+  const asr = state.settings.asr;
+  const nextDevice = elements.settingsAsrDevice.value;
+  const cpuOptions = asr.compute_type_options;
+  const allDeviceOptions = asr.device_options;
+  const selectedDevice = allDeviceOptions.find((option) => option.value === nextDevice)?.value || nextDevice;
+  const computeOptions =
+    selectedDevice === asr.device
+      ? asr.compute_type_options
+      : selectedDevice === "cuda"
+        ? [
+            { value: "float16", label: "float16", description: "默认推荐，适合大多数 NVIDIA GPU。" },
+            { value: "int8_float16", label: "int8_float16", description: "更省显存，适合显存更紧张的 GPU。" },
+            { value: "int8", label: "int8", description: "进一步压缩显存占用，但速度和精度可能略有波动。" },
+          ]
+        : [
+            { value: "int8", label: "int8", description: "默认推荐，CPU 上更省内存、更稳。" },
+            { value: "float32", label: "float32", description: "更重更慢，适合少量高精度 CPU 测试。" },
+          ];
+
+  renderComputeTypeOptions(computeOptions, computeOptions[0]?.value || cpuOptions[0]?.value || "int8");
 }
 
 async function loadSample() {
@@ -143,19 +200,26 @@ async function analyzeMeeting() {
 
 async function saveSettings() {
   const modelSize = elements.settingsAsrModelSize.value;
-  if (!modelSize) {
-    elements.settingsStatus.textContent = "请先选择一个 ASR 模型档位。";
+  const device = elements.settingsAsrDevice.value;
+  const computeType = elements.settingsAsrComputeType.value;
+
+  if (!modelSize || !device || !computeType) {
+    elements.settingsStatus.textContent = "请先完整选择模型档位、设备和计算类型。";
     return;
   }
 
   elements.settingsSaveButton.disabled = true;
   elements.settingsStatus.textContent = "正在保存设置并更新本地转写服务...";
   try {
-    const settings = await api.updateAsrSettings({ model_size: modelSize });
+    const settings = await api.updateAsrSettings({
+      model_size: modelSize,
+      device,
+      compute_type: computeType,
+    });
     state.settings = settings;
     renderSettings(settings);
     await checkRuntime();
-    elements.settingsStatus.textContent = `已保存。当前 ASR 模型档位为 ${modelSize}。下一次音频分析会按新设置运行。`;
+    elements.settingsStatus.textContent = `已保存。当前使用 ${device} / ${computeType} / ${modelSize}，下一次音频分析会按新设置运行。`;
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     elements.settingsStatus.textContent = `保存失败：${message}`;
@@ -237,20 +301,6 @@ async function selectTopic(topicId, { silent = false } = {}) {
   } catch (error) {
     showRuntimeError(error, "主题详情加载失败");
   }
-}
-
-function renderSettings(settings) {
-  const asr = settings.asr;
-  const currentValue = asr.model_size || "small";
-  elements.settingsAsrModelSize.innerHTML = asr.options
-    .map((option) => {
-      const selected = option.value === currentValue ? " selected" : "";
-      return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)} - ${escapeHtml(option.description)}</option>`;
-    })
-    .join("");
-  elements.settingsAsrDevice.textContent = asr.device || "cpu";
-  elements.settingsAsrComputeType.textContent = asr.compute_type || "int8";
-  elements.settingsStatus.textContent = asr.note || "可以在这里调整本地转写模型配置。";
 }
 
 function renderMetrics(dashboard) {
