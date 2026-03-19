@@ -138,6 +138,8 @@ def test_settings_endpoint_updates_asr_model_size(tmp_path: Path) -> None:
     assert settings["asr"]["model_options"]
     assert settings["asr"]["device_options"]
     assert settings["asr"]["compute_type_options"]
+    assert settings["llm"]["provider"] == "disabled"
+    assert settings["llm"]["provider_options"]
 
     update_response = client.post(
         "/api/settings/asr",
@@ -153,6 +155,26 @@ def test_settings_endpoint_updates_asr_model_size(tmp_path: Path) -> None:
     assert '"ASR_MODEL_SIZE": "medium"' in saved_settings
     assert '"ASR_DEVICE": "cpu"' in saved_settings
     assert '"ASR_COMPUTE_TYPE": "int8"' in saved_settings
+
+
+def test_settings_endpoint_updates_llm_provider_and_model(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+
+    update_response = client.post(
+        "/api/settings/llm",
+        json={"provider": "qwen", "model": "qwen3.5-plus"},
+    )
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["llm"]["provider"] == "qwen"
+    assert updated["llm"]["model"] == "qwen3.5-plus"
+    assert updated["llm"]["current_provider"] == "qwen"
+    assert updated["llm"]["current_model"] == ""
+    assert updated["llm"]["enabled"] is False
+
+    saved_settings = (tmp_path / "settings.json").read_text(encoding="utf-8")
+    assert '"LLM_PROVIDER": "qwen"' in saved_settings
+    assert '"QWEN_MODEL": "qwen3.5-plus"' in saved_settings
 
 
 def test_settings_endpoint_rejects_cuda_without_supported_runtime(tmp_path: Path) -> None:
@@ -190,7 +212,7 @@ def test_create_meeting_from_audio(tmp_path: Path) -> None:
     assert health_response.status_code == 200
     health = health_response.json()
     assert health["app_name"] == "天枢智元·融谈Copilot"
-    assert health["app_version"] == "0.2.4"
+    assert health["app_version"] == "0.2.5"
     assert health["asr_enabled"] == "true"
 
 

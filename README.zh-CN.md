@@ -8,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.4-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.5-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -90,10 +90,12 @@ py -m venv .venv
 $env:LLM_PROVIDER="qwen"
 $env:QWEN_API_KEY="replace-with-your-key"
 $env:QWEN_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
-$env:QWEN_MODEL="qwen-plus"
+$env:QWEN_MODEL="qwen3.5-plus"
 ```
 
 如果要切回 Moonshot / Kimi，把 `LLM_PROVIDER` 改成 `moonshot`，并使用 `MOONSHOT_API_KEY`、`MOONSHOT_BASE_URL`、`MOONSHOT_MODEL`。
+
+启动后也可以直接在页面里的“模型增强设置”中切换 provider 和模型名。
 
 4. 手动以前台方式启动
 

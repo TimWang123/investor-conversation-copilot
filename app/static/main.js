@@ -17,6 +17,12 @@ const elements = {
   settingsCurrentComputeType: document.querySelector("#setting-asr-current-compute-type"),
   settingsSaveButton: document.querySelector("#save-settings"),
   settingsStatus: document.querySelector("#settings-status"),
+  settingsLlmProvider: document.querySelector("#setting-llm-provider"),
+  settingsLlmModel: document.querySelector("#setting-llm-model"),
+  settingsLlmCurrentProvider: document.querySelector("#setting-llm-current-provider"),
+  settingsLlmCurrentModel: document.querySelector("#setting-llm-current-model"),
+  settingsLlmSaveButton: document.querySelector("#save-llm-settings"),
+  settingsLlmStatus: document.querySelector("#llm-settings-status"),
   runtimeHint: document.querySelector("#runtime-hint"),
   statusText: document.querySelector("#status-text"),
   overview: document.querySelector("#overview"),
@@ -55,6 +61,8 @@ elements.recordStopButton.addEventListener("click", stopRecording);
 elements.recordClearButton.addEventListener("click", clearAudioSelection);
 elements.settingsAsrDevice.addEventListener("change", handleSettingsDeviceChange);
 elements.settingsSaveButton.addEventListener("click", saveSettings);
+elements.settingsLlmProvider.addEventListener("change", handleLlmProviderChange);
+elements.settingsLlmSaveButton.addEventListener("click", saveLlmSettings);
 
 bootstrap();
 
@@ -100,12 +108,19 @@ async function loadSettings() {
 
 function renderSettings(settings) {
   const asr = settings.asr;
+  const llm = settings.llm;
   renderSelectOptions(elements.settingsAsrModelSize, asr.model_options, asr.model_size);
   renderSelectOptions(elements.settingsAsrDevice, asr.device_options, asr.device);
   renderComputeTypeOptions(asr.compute_type_options, asr.compute_type);
   elements.settingsCurrentDevice.textContent = asr.device || "cpu";
   elements.settingsCurrentComputeType.textContent = asr.compute_type || "int8";
   elements.settingsStatus.textContent = asr.note || "可以在这里调整本地转写模型配置。";
+  renderSelectOptions(elements.settingsLlmProvider, llm.provider_options, llm.provider);
+  elements.settingsLlmModel.value = llm.model || "";
+  elements.settingsLlmCurrentProvider.textContent = llm.current_provider || "disabled";
+  elements.settingsLlmCurrentModel.textContent = llm.current_model || "-";
+  elements.settingsLlmStatus.textContent = llm.note || "这里可以切换模型提供方和模型名。";
+  updateLlmModelPlaceholder(llm.provider);
 }
 
 function renderSelectOptions(selectElement, options, selectedValue) {
@@ -124,6 +139,33 @@ function renderComputeTypeOptions(options, selectedValue) {
       return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)} - ${escapeHtml(option.description)}</option>`;
     })
     .join("");
+}
+
+function handleLlmProviderChange() {
+  updateLlmModelPlaceholder(elements.settingsLlmProvider.value);
+}
+
+function updateLlmModelPlaceholder(provider) {
+  if (provider === "qwen") {
+    elements.settingsLlmModel.placeholder = "例如 qwen3.5-plus 或 qwen3-max";
+    if (!elements.settingsLlmModel.value.trim()) {
+      elements.settingsLlmModel.value = "qwen3.5-plus";
+    }
+    return;
+  }
+
+  if (provider === "moonshot") {
+    elements.settingsLlmModel.placeholder = "例如 kimi-latest";
+    if (!elements.settingsLlmModel.value.trim()) {
+      elements.settingsLlmModel.value = "kimi-latest";
+    }
+    return;
+  }
+
+  elements.settingsLlmModel.placeholder = "当前已关闭模型增强";
+  if (provider === "disabled") {
+    elements.settingsLlmModel.value = "";
+  }
 }
 
 function handleSettingsDeviceChange() {
@@ -225,6 +267,33 @@ async function saveSettings() {
     elements.settingsStatus.textContent = `保存失败：${message}`;
   } finally {
     elements.settingsSaveButton.disabled = false;
+  }
+}
+
+async function saveLlmSettings() {
+  const provider = elements.settingsLlmProvider.value;
+  const model = elements.settingsLlmModel.value.trim();
+
+  if (provider !== "disabled" && !model) {
+    elements.settingsLlmStatus.textContent = "请先填写模型名称。";
+    return;
+  }
+
+  elements.settingsLlmSaveButton.disabled = true;
+  elements.settingsLlmStatus.textContent = "正在保存模型设置并刷新当前分析模式...";
+  try {
+    const settings = await api.updateLlmSettings({ provider, model });
+    state.settings = settings;
+    renderSettings(settings);
+    await checkRuntime();
+    const activeProvider = settings.llm.current_provider || "disabled";
+    const activeModel = settings.llm.current_model || model || "-";
+    elements.settingsLlmStatus.textContent = `已保存。当前生效为 ${activeProvider} / ${activeModel}。`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "未知错误";
+    elements.settingsLlmStatus.textContent = `保存失败：${message}`;
+  } finally {
+    elements.settingsLlmSaveButton.disabled = false;
   }
 }
 

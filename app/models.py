@@ -178,11 +178,27 @@ class AsrSettingsPayload(BaseModel):
     note: str = ""
 
 
+class LlmSettingsPayload(BaseModel):
+    provider: str
+    model: str
+    provider_options: list[SettingOption] = Field(default_factory=list)
+    enabled: bool = False
+    current_provider: str = "disabled"
+    current_model: str = ""
+    note: str = ""
+
+
 class AppSettingsResponse(BaseModel):
     asr: AsrSettingsPayload
+    llm: LlmSettingsPayload
 
 
 class UpdateAsrSettingsRequest(BaseModel):
     model_size: str
     device: str
     compute_type: str
+
+
+class UpdateLlmSettingsRequest(BaseModel):
+    provider: str
+    model: str

@@ -8,7 +8,14 @@ from app.config import (
     ASR_COMPUTE_TYPE,
     ASR_DEVICE,
     ASR_MODEL_SIZE,
+    LLM_PROVIDER,
     MODELS_DIR,
+    MOONSHOT_API_KEY,
+    MOONSHOT_BASE_URL,
+    MOONSHOT_MODEL,
+    QWEN_API_KEY,
+    QWEN_BASE_URL,
+    QWEN_MODEL,
     SAMPLES_DIR,
     UPLOADS_DIR,
     save_local_settings,
@@ -18,11 +25,13 @@ from app.models import (
     CreateMeetingRequest,
     DashboardSummary,
     DemoSampleResponse,
+    LlmSettingsPayload,
     MeetingListItem,
     MeetingRecord,
     SettingOption,
     TopicDetail,
     UpdateAsrSettingsRequest,
+    UpdateLlmSettingsRequest,
     new_id,
 )
 from app.services.analysis import (
@@ -31,12 +40,17 @@ from app.services.analysis import (
     build_training_script,
     process_meeting,
 )
-from app.services.llm_gateway import LlmGateway
+from app.services.llm_gateway import LlmGateway, build_llm_gateway
 from app.services.transcription_service import FasterWhisperTranscriptionService
 from app.storage import JsonStateStore
 
 
 class MeetingService:
+    LLM_PROVIDER_OPTIONS = [
+        SettingOption(value="disabled", label="关闭 LLM", description="只使用本地规则分析，不调用外部大模型。"),
+        SettingOption(value="moonshot", label="Moonshot / Kimi", description="使用 Moonshot / Kimi 做转写重建和复盘增强。"),
+        SettingOption(value="qwen", label="Qwen / 千问", description="使用阿里云百炼的千问模型做转写重建和复盘增强。"),
+    ]
     ASR_MODEL_OPTIONS = [
         SettingOption(value="base", label="base", description="更轻更快，适合流程演示和较老电脑。"),
         SettingOption(value="small", label="small", description="默认推荐，速度和中文会议准确率更平衡。"),
@@ -60,12 +74,35 @@ class MeetingService:
         llm_gateway: LlmGateway | None = None,
         transcription_service: FasterWhisperTranscriptionService | None = None,
         settings_file: Path | None = None,
+        llm_provider_name: str = LLM_PROVIDER,
+        moonshot_model: str = MOONSHOT_MODEL,
+        qwen_model: str = QWEN_MODEL,
+        moonshot_api_key: str = MOONSHOT_API_KEY,
+        moonshot_base_url: str = MOONSHOT_BASE_URL,
+        qwen_api_key: str = QWEN_API_KEY,
+        qwen_base_url: str = QWEN_BASE_URL,
     ):
         self.store = store
         self.llm_gateway = llm_gateway
         self.transcription_service = transcription_service
         self.settings_file = settings_file
         self._hardware_probe_cache: tuple[bool, str | None] | None = None
+        self.llm_provider_name = (llm_provider_name or "disabled").strip().lower()
+        self.moonshot_model = moonshot_model
+        self.qwen_model = qwen_model
+        self.moonshot_api_key = moonshot_api_key
+        self.moonshot_base_url = moonshot_base_url
+        self.qwen_api_key = qwen_api_key
+        self.qwen_base_url = qwen_base_url
+
+        if self.llm_gateway is not None:
+            status = self.llm_gateway.status()
+            self.llm_provider_name = status.get("provider") or self.llm_provider_name
+            active_model = status.get("model") or ""
+            if self.llm_provider_name == "moonshot" and active_model:
+                self.moonshot_model = active_model
+            if self.llm_provider_name == "qwen" and active_model:
+                self.qwen_model = active_model
 
     def get_sample_transcript(self) -> DemoSampleResponse:
         transcript_path = SAMPLES_DIR / "fundraising_transcript.txt"
@@ -218,12 +255,14 @@ class MeetingService:
         return self.transcription_service.status()
 
     def get_app_settings(self) -> AppSettingsResponse:
-        status = self.transcription_status()
-        model_size = status.get("model") or ASR_MODEL_SIZE
-        device = status.get("device") or getattr(self.transcription_service, "device", ASR_DEVICE)
+        asr_status = self.transcription_status()
+        llm_status = self.llm_status()
+        model_size = asr_status.get("model") or ASR_MODEL_SIZE
+        device = asr_status.get("device") or getattr(self.transcription_service, "device", ASR_DEVICE)
         compute_type = getattr(self.transcription_service, "compute_type", ASR_COMPUTE_TYPE)
         device_options = self._device_options(current_device=device)
         compute_type_options = self._compute_type_options(device=device)
+        selected_provider = self._selected_llm_provider()
         return AppSettingsResponse(
             asr={
                 "model_size": model_size,
@@ -233,7 +272,16 @@ class MeetingService:
                 "device_options": device_options,
                 "compute_type_options": compute_type_options,
                 "note": self._settings_note(device=device),
-            }
+            },
+            llm=LlmSettingsPayload(
+                provider=selected_provider,
+                model=self._selected_llm_model(selected_provider),
+                provider_options=self.LLM_PROVIDER_OPTIONS,
+                enabled=bool(llm_status.get("enabled")),
+                current_provider=llm_status.get("provider") or "disabled",
+                current_model=llm_status.get("model") or "",
+                note=self._llm_settings_note(selected_provider, bool(llm_status.get("enabled"))),
+            ),
         )
 
     def update_asr_settings(self, payload: UpdateAsrSettingsRequest) -> AppSettingsResponse:
@@ -265,6 +313,31 @@ class MeetingService:
             },
             target_path=self.settings_file,
         )
+        return self.get_app_settings()
+
+    def update_llm_settings(self, payload: UpdateLlmSettingsRequest) -> AppSettingsResponse:
+        provider = (payload.provider or "").strip().lower()
+        if provider not in {option.value for option in self.LLM_PROVIDER_OPTIONS}:
+            raise HTTPException(status_code=400, detail="不支持的 LLM provider。")
+
+        model = payload.model.strip()
+        if provider != "disabled" and not model:
+            raise HTTPException(status_code=400, detail="请填写模型名称。")
+
+        self.llm_provider_name = provider
+        if provider == "moonshot":
+            self.moonshot_model = model
+        elif provider == "qwen":
+            self.qwen_model = model
+
+        settings_payload: dict[str, str] = {"LLM_PROVIDER": provider}
+        if provider == "moonshot":
+            settings_payload["MOONSHOT_MODEL"] = model
+        elif provider == "qwen":
+            settings_payload["QWEN_MODEL"] = model
+
+        save_local_settings(settings_payload, target_path=self.settings_file)
+        self.llm_gateway = self._build_runtime_llm_gateway()
         return self.get_app_settings()
 
     def _cuda_available(self) -> bool:
@@ -315,6 +388,43 @@ class MeetingService:
         if device == "cuda":
             return self.CUDA_COMPUTE_OPTIONS
         return self.CPU_COMPUTE_OPTIONS
+
+    def _selected_llm_provider(self) -> str:
+        provider = (self.llm_provider_name or "disabled").strip().lower()
+        if provider in {option.value for option in self.LLM_PROVIDER_OPTIONS}:
+            return provider
+        return "disabled"
+
+    def _selected_llm_model(self, provider: str) -> str:
+        if provider == "moonshot":
+            return self.moonshot_model
+        if provider == "qwen":
+            return self.qwen_model
+        return ""
+
+    def _llm_settings_note(self, provider: str, enabled: bool) -> str:
+        if provider == "disabled":
+            return "当前已关闭模型增强，只使用本地规则做问答抽取和复盘。"
+        if provider == "moonshot":
+            if enabled:
+                return f"当前正在使用 Moonshot / Kimi，模型为 {self.moonshot_model}。保存后会立即用于后续转写重建和复盘。"
+            return "已选择 Moonshot / Kimi，但当前进程里还没有可用的 MOONSHOT_API_KEY，因此暂时不会启用模型增强。"
+        if provider == "qwen":
+            if enabled:
+                return f"当前正在使用 Qwen，模型为 {self.qwen_model}。推荐日常用 qwen3.5-plus，重要复盘可切 qwen3-max。"
+            return "已选择 Qwen，但当前进程里还没有可用的 QWEN_API_KEY，因此暂时不会启用模型增强。"
+        return "当前 LLM 设置尚未初始化。"
+
+    def _build_runtime_llm_gateway(self) -> LlmGateway | None:
+        return build_llm_gateway(
+            provider=self.llm_provider_name,
+            moonshot_api_key=self.moonshot_api_key,
+            moonshot_base_url=self.moonshot_base_url,
+            moonshot_model=self.moonshot_model,
+            qwen_api_key=self.qwen_api_key,
+            qwen_base_url=self.qwen_base_url,
+            qwen_model=self.qwen_model,
+        )
 
     def _settings_note(self, device: str) -> str:
         has_cuda, gpu_name = self._probe_nvidia_hardware()

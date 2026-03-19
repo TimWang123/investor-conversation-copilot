@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_meeting_service
-from app.models import AppSettingsResponse, UpdateAsrSettingsRequest
+from app.models import AppSettingsResponse, UpdateAsrSettingsRequest, UpdateLlmSettingsRequest
 from app.services.meeting_service import MeetingService
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -24,3 +24,11 @@ def update_asr_settings(
     service: Annotated[MeetingService, Depends(get_meeting_service)],
 ) -> AppSettingsResponse:
     return service.update_asr_settings(payload)
+
+
+@router.post("/llm", response_model=AppSettingsResponse)
+def update_llm_settings(
+    payload: UpdateLlmSettingsRequest,
+    service: Annotated[MeetingService, Depends(get_meeting_service)],
+) -> AppSettingsResponse:
+    return service.update_llm_settings(payload)

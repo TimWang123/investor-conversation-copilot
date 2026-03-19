@@ -62,6 +62,13 @@ def create_app(
             storage,
             llm_gateway=llm_gateway,
             transcription_service=transcription_service,
+            llm_provider_name=LLM_PROVIDER,
+            moonshot_model=MOONSHOT_MODEL,
+            qwen_model=QWEN_MODEL,
+            moonshot_api_key=MOONSHOT_API_KEY,
+            moonshot_base_url=MOONSHOT_BASE_URL,
+            qwen_api_key=QWEN_API_KEY,
+            qwen_base_url=QWEN_BASE_URL,
         )
     app.state.meeting_service = meeting_service
 

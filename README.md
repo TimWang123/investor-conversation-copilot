@@ -8,7 +8,7 @@
   </p>
   <p>
     <img alt="Status" src="https://img.shields.io/badge/status-public%20demo-1f8b4c" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.2.4-0A66C2" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.2.5-0A66C2" />
     <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-05998b" />
     <img alt="ASR" src="https://img.shields.io/badge/asr-faster--whisper-5C6BC0" />
     <img alt="LLM" src="https://img.shields.io/badge/llm-Kimi%20optional-F97316" />
@@ -55,6 +55,7 @@ flowchart LR
 - Transcript-first workflow for quick demos and low-friction testing
 - Local `faster-whisper` transcription for audio uploads
 - Optional Kimi-enhanced transcript normalization and answer review
+- Runtime settings page for switching ASR size/device and the active LLM provider/model
 - Topic and canonical-answer views for message consistency
 - Browser workbench designed for internal budget and product demos
 
@@ -138,10 +139,12 @@ py -m venv .venv
 $env:LLM_PROVIDER="qwen"
 $env:QWEN_API_KEY="replace-with-your-key"
 $env:QWEN_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
-$env:QWEN_MODEL="qwen-plus"
+$env:QWEN_MODEL="qwen3.5-plus"
 ```
 
 For Moonshot / Kimi, switch `LLM_PROVIDER` to `moonshot` and use `MOONSHOT_API_KEY`, `MOONSHOT_BASE_URL`, and `MOONSHOT_MODEL`.
+
+You can also switch the active provider and model directly in the app's settings page after startup.
 
 4. Start the app in the current shell.
 

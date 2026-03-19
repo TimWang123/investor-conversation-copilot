@@ -30,6 +30,13 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
+  updateLlmSettings(payload) {
+    return request("/api/settings/llm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
   dashboard() {
     return request("/api/dashboard");
   },

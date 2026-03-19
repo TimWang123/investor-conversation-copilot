@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.5] - 2026-03-18
+
+### Added
+
+- settings-page support for switching the active LLM provider and model name
+- backend `/api/settings/llm` endpoint for persisting runtime LLM configuration
+- regression coverage for saving Qwen model settings through the API
+
+### Changed
+
+- bumped the app version to `0.2.5`
+- updated the runtime settings UI so ASR and LLM configuration can be changed independently
+- improved freeform transcript follow-up question detection for multi-turn investor Q&A extraction
+
 ## [0.2.4] - 2026-03-18
 
 ### Added

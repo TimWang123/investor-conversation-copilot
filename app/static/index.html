@@ -109,6 +109,34 @@
               <button id="save-settings" type="button" class="ghost">保存设置</button>
               <p id="settings-status">默认推荐使用 CPU + small，适合大多数普通 Windows 电脑演示。</p>
             </div>
+            <hr />
+            <div class="audio-panel-head">
+              <h3>模型增强设置</h3>
+              <p>这里控制问答复盘阶段使用哪一家大模型，以及当前想使用的模型名。保存后会立即作用到后续分析。</p>
+            </div>
+            <div class="grid two settings-grid">
+              <label>
+                LLM 提供方
+                <select id="setting-llm-provider"></select>
+              </label>
+              <label>
+                模型名
+                <input id="setting-llm-model" type="text" placeholder="例如 qwen3.5-plus" />
+              </label>
+            </div>
+            <div class="grid two settings-grid">
+              <div class="settings-readout">
+                <div><strong>当前生效提供方:</strong><span id="setting-llm-current-provider">disabled</span></div>
+                <div><strong>当前生效模型:</strong><span id="setting-llm-current-model">-</span></div>
+              </div>
+              <div class="settings-readout">
+                <div><strong>建议:</strong><span>Qwen 日常建议 `qwen3.5-plus`，重要复盘可切 `qwen3-max`。</span></div>
+              </div>
+            </div>
+            <div class="submit-row settings-row">
+              <button id="save-llm-settings" type="button" class="ghost">保存模型设置</button>
+              <p id="llm-settings-status">默认按当前本机已配置的模型提供方运行。</p>
+            </div>
           </section>
 
           <label>

@@ -212,9 +212,17 @@ label {
   align-items: center;
 }
 
-#settings-status {
+#settings-status,
+#llm-settings-status {
   margin: 0;
   color: var(--muted);
+}
+
+.settings-panel hr {
+  width: 100%;
+  margin: 8px 0 2px;
+  border: none;
+  border-top: 1px solid var(--line);
 }
 
 input,
