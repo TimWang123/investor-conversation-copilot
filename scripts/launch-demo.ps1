@@ -1,10 +1,10 @@
 Param(
   [string]$MoonshotApiKey = "",
-  [string]$MoonshotBaseUrl = "https://api.moonshot.cn/v1",
-  [string]$MoonshotModel = "kimi-latest",
-  [string]$AsrModelSize = "small",
-  [string]$AsrDevice = "cpu",
-  [string]$AsrComputeType = "int8",
+  [string]$MoonshotBaseUrl = "",
+  [string]$MoonshotModel = "",
+  [string]$AsrModelSize = "",
+  [string]$AsrDevice = "",
+  [string]$AsrComputeType = "",
   [int]$Port = 8000,
   [switch]$ForceRestart,
   [switch]$NoBrowser

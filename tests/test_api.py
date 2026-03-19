@@ -36,7 +36,11 @@ class FakeTranscriptionService:
 
 def build_client(tmp_path: Path) -> TestClient:
     store = JsonStateStore(tmp_path / "state.json")
-    service = MeetingService(store, transcription_service=FakeTranscriptionService())
+    service = MeetingService(
+        store,
+        transcription_service=FakeTranscriptionService(),
+        settings_file=tmp_path / "settings.json",
+    )
     app = create_app(store=store, meeting_service=service)
     return TestClient(app)
 
@@ -67,6 +71,7 @@ def build_client_with_llm(tmp_path: Path) -> TestClient:
         store,
         llm_gateway=FakeLlmGateway(),
         transcription_service=FakeTranscriptionService(),
+        settings_file=tmp_path / "settings.json",
     )
     app = create_app(store=store, meeting_service=service)
     return TestClient(app)
@@ -120,6 +125,25 @@ def test_create_meeting_generates_review_and_topics(tmp_path: Path) -> None:
     assert topic_detail_response.status_code == 200
     topic_detail = topic_detail_response.json()
     assert topic_detail["canonical_answers"]
+
+
+def test_settings_endpoint_updates_asr_model_size(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+
+    settings_response = client.get("/api/settings")
+    assert settings_response.status_code == 200
+    settings = settings_response.json()
+    assert settings["asr"]["model_size"] == "fake-small"
+    assert settings["asr"]["options"]
+
+    update_response = client.post("/api/settings/asr", json={"model_size": "medium"})
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["asr"]["model_size"] == "medium"
+    assert updated["asr"]["device"] == "cpu"
+
+    saved_settings = (tmp_path / "settings.json").read_text(encoding="utf-8")
+    assert '"ASR_MODEL_SIZE": "medium"' in saved_settings
 
 
 def test_create_meeting_from_audio(tmp_path: Path) -> None:

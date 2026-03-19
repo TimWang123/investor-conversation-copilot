@@ -160,3 +160,25 @@ class TranscriptionResult(BaseModel):
     language: str | None = None
     duration_seconds: float | None = None
     segments: list[dict] = Field(default_factory=list)
+
+
+class SettingOption(BaseModel):
+    value: str
+    label: str
+    description: str
+
+
+class AsrSettingsPayload(BaseModel):
+    model_size: str
+    device: str
+    compute_type: str
+    options: list[SettingOption] = Field(default_factory=list)
+    note: str = ""
+
+
+class AppSettingsResponse(BaseModel):
+    asr: AsrSettingsPayload
+
+
+class UpdateAsrSettingsRequest(BaseModel):
+    model_size: str

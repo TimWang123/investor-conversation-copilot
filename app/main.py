@@ -8,6 +8,7 @@ from app.api.routers.dashboard import router as dashboard_router
 from app.api.routers.demo import router as demo_router
 from app.api.routers.knowledge import router as knowledge_router
 from app.api.routers.meetings import router as meetings_router
+from app.api.routers.settings import router as settings_router
 from app.config import (
     APP_DISPLAY_NAME,
     APP_VERSION,
@@ -69,6 +70,7 @@ def create_app(
     app.include_router(meetings_router)
     app.include_router(knowledge_router)
     app.include_router(dashboard_router)
+    app.include_router(settings_router)
 
     @app.get("/", include_in_schema=False)
     def root() -> FileResponse:
@@ -89,6 +91,7 @@ def create_app(
             "asr_enabled": str(asr["enabled"]).lower(),
             "asr_model": asr["model"] or "",
             "asr_device": asr.get("device") or "",
+            "asr_compute_type": getattr(app.state.meeting_service.transcription_service, "compute_type", ""),
         }
 
     return app

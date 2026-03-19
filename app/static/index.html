@@ -12,17 +12,18 @@
         <div>
           <p class="product-name">天枢智元·融谈Copilot</p>
           <p class="eyebrow">融资沟通工作台</p>
-          <h1>把投资人问答沉淀成统一口径和培训资产</h1>
+          <h1>把投资人问答沉淀成统一口径、复盘资产和培训话术</h1>
           <p class="subtitle">
-            当前版本已经具备从会议转写中识别问答、复盘回答、沉淀主题库、生成标准话术和培训脚本的基础能力。
+            这是一套面向融资场景的会话分析工作台。它可以接收录音或转写内容，自动抽取投资人问题与回答，
+            评估回答质量，沉淀主题库、标准话术和新人培训脚本。
           </p>
         </div>
         <div class="hero-card">
-          <p>当前最适合展示给老板的价值</p>
+          <p>当前最适合对老板展示的价值</p>
           <ul>
-            <li>把重复回答变成组织级知识资产</li>
-            <li>定位哪些回答经常不完整或不一致</li>
-            <li>自动输出统一培训话术，支撑团队扩张</li>
+            <li>把重复回答变成可复用的组织知识资产</li>
+            <li>快速定位哪些回答经常不完整、不一致或证据不足</li>
+            <li>自动生成统一培训话术，帮助团队扩大后保持口径一致</li>
           </ul>
         </div>
       </header>
@@ -30,14 +31,14 @@
       <main class="workspace">
         <section class="panel composer-panel">
           <div id="runtime-hint" class="runtime-hint">
-            建议通过 <code>http://127.0.0.1:8000</code> 打开本页。如果你是直接双击 HTML 文件，分析按钮无法连接后端接口。
+            建议通过 <code>http://127.0.0.1:8000</code> 打开本页。如果你是直接双击 HTML 文件，页面将无法连接后端接口。
           </div>
 
           <div class="panel-header">
             <h2>新建会议分析</h2>
             <div class="actions">
-              <button id="load-sample" class="ghost">载入示例</button>
-              <button id="reset-demo" class="ghost">清空演示数据</button>
+              <button id="load-sample" class="ghost" type="button">载入示例</button>
+              <button id="reset-demo" class="ghost" type="button">清空演示数据</button>
             </div>
           </div>
 
@@ -65,7 +66,7 @@
           <section class="audio-panel">
             <div class="audio-panel-head">
               <h3>音频入口</h3>
-              <p>可以直接上传音频文件，也可以在浏览器里录一段演示音频。</p>
+              <p>你可以直接上传音频文件，也可以在浏览器里录一段演示音频。</p>
             </div>
             <label>
               上传音频文件
@@ -79,16 +80,37 @@
             <div id="audio-meta" class="audio-meta">当前未选择音频，将按文本模式分析。</div>
           </section>
 
+          <section class="audio-panel settings-panel">
+            <div class="audio-panel-head">
+              <h3>运行设置</h3>
+              <p>在这里切换本地语音转写模型档位。新档位首次用于音频分析时会下载对应模型，后续会直接复用本地缓存。</p>
+            </div>
+            <div class="grid two settings-grid">
+              <label>
+                ASR 模型档位
+                <select id="setting-asr-model-size"></select>
+              </label>
+              <div class="settings-readout">
+                <div><strong>当前设备:</strong><span id="setting-asr-device">cpu</span></div>
+                <div><strong>计算类型:</strong><span id="setting-asr-compute-type">int8</span></div>
+              </div>
+            </div>
+            <div class="submit-row settings-row">
+              <button id="save-settings" type="button" class="ghost">保存设置</button>
+              <p id="settings-status">默认推荐使用 small，适合大多数普通 Windows 电脑演示。</p>
+            </div>
+          </section>
+
           <label>
             转写内容
             <textarea
               id="transcript"
-              placeholder="建议使用“投资人:”和“我:”作为说话人标记，便于系统识别问答。"
+              placeholder="可以直接粘贴会议转写内容。即使没有明确写“投资人:”和“我:”，系统也会尽量自动识别问答。"
             ></textarea>
           </label>
 
           <div class="submit-row">
-            <button id="analyze" class="primary">生成复盘</button>
+            <button id="analyze" class="primary" type="button">生成复盘</button>
             <p id="status-text">等待输入会议内容。</p>
           </div>
         </section>
@@ -120,7 +142,7 @@
           <section class="card">
             <h3>当前会议总评</h3>
             <div id="overview" class="muted">
-              生成结果后，这里会显示本场会议总评、风格画像和最值得拿去申请预算的产品价值。
+              生成结果后，这里会展示本场会议的总评、风格画像以及可用于汇报预算的产品价值表达。
             </div>
           </section>
 

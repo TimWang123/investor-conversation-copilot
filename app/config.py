@@ -43,6 +43,7 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
 MODELS_DIR = DATA_DIR / "models"
 MODELS_DIR.mkdir(exist_ok=True)
+SETTINGS_FILE = DATA_DIR / "settings.json"
 
 STATE_FILE = Path(os.getenv("COPILOT_STATE_FILE", DATA_DIR / "app_state.json"))
 VERSION_FILE = BASE_DIR / "VERSION"
@@ -79,6 +80,41 @@ def _load_local_settings() -> dict[str, object]:
         if isinstance(payload, dict):
             return payload
     return {}
+
+
+def _resolve_settings_write_path() -> Path:
+    for candidate in _candidate_settings_files():
+        try:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            continue
+        if candidate.exists():
+            if os.access(candidate, os.W_OK):
+                return candidate
+            continue
+        if os.access(candidate.parent, os.W_OK):
+            return candidate
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    return SETTINGS_FILE
+
+
+def save_local_settings(values: dict[str, object], *, target_path: Path | None = None) -> Path:
+    settings_path = target_path or _resolve_settings_write_path()
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    existing: dict[str, object] = {}
+    if settings_path.exists():
+        try:
+            payload = json.loads(settings_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            payload = {}
+        if isinstance(payload, dict):
+            existing = payload
+    existing.update(values)
+    settings_path.write_text(
+        json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return settings_path
 
 
 def _read_setting(name: str, default: str) -> str:

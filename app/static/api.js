@@ -20,6 +20,16 @@ export const api = {
   health() {
     return request("/api/health");
   },
+  settings() {
+    return request("/api/settings");
+  },
+  updateAsrSettings(payload) {
+    return request("/api/settings/asr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
   dashboard() {
     return request("/api/dashboard");
   },

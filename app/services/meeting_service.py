@@ -3,14 +3,25 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
-from app.config import SAMPLES_DIR, UPLOADS_DIR
+from app.config import (
+    ASR_COMPUTE_TYPE,
+    ASR_DEVICE,
+    ASR_MODEL_SIZE,
+    MODELS_DIR,
+    SAMPLES_DIR,
+    UPLOADS_DIR,
+    save_local_settings,
+)
 from app.models import (
+    AppSettingsResponse,
     CreateMeetingRequest,
     DashboardSummary,
     DemoSampleResponse,
     MeetingListItem,
     MeetingRecord,
+    SettingOption,
     TopicDetail,
+    UpdateAsrSettingsRequest,
     new_id,
 )
 from app.services.analysis import (
@@ -25,15 +36,25 @@ from app.storage import JsonStateStore
 
 
 class MeetingService:
+    ASR_MODEL_OPTIONS = [
+        SettingOption(value="base", label="base", description="更轻更快，适合流程演示和较老电脑。"),
+        SettingOption(value="small", label="small", description="默认推荐，速度和中文会议准确率更平衡。"),
+        SettingOption(value="medium", label="medium", description="更重但更稳，适合更在意识别质量的场景。"),
+        SettingOption(value="large-v3", label="large-v3", description="准确率更强，但更慢，更适合高配机器。"),
+        SettingOption(value="turbo", label="turbo", description="偏高配场景，追求更快的大模型转写体验。"),
+    ]
+
     def __init__(
         self,
         store: JsonStateStore,
         llm_gateway: LlmGateway | None = None,
         transcription_service: FasterWhisperTranscriptionService | None = None,
+        settings_file: Path | None = None,
     ):
         self.store = store
         self.llm_gateway = llm_gateway
         self.transcription_service = transcription_service
+        self.settings_file = settings_file
 
     def get_sample_transcript(self) -> DemoSampleResponse:
         transcript_path = SAMPLES_DIR / "fundraising_transcript.txt"
@@ -184,6 +205,44 @@ class MeetingService:
         if self.transcription_service is None:
             return {"provider": None, "enabled": False, "model": None, "device": None}
         return self.transcription_service.status()
+
+    def get_app_settings(self) -> AppSettingsResponse:
+        status = self.transcription_status()
+        model_size = status.get("model") or ASR_MODEL_SIZE
+        device = status.get("device") or getattr(self.transcription_service, "device", ASR_DEVICE)
+        compute_type = getattr(self.transcription_service, "compute_type", ASR_COMPUTE_TYPE)
+        return AppSettingsResponse(
+            asr={
+                "model_size": model_size,
+                "device": device,
+                "compute_type": compute_type,
+                "options": self.ASR_MODEL_OPTIONS,
+                "note": "切换新档位后，下一次做音频转写时会下载对应模型；之后会复用本地缓存。",
+            }
+        )
+
+    def update_asr_settings(self, payload: UpdateAsrSettingsRequest) -> AppSettingsResponse:
+        allowed_values = {option.value for option in self.ASR_MODEL_OPTIONS}
+        if payload.model_size not in allowed_values:
+            raise HTTPException(status_code=400, detail="不支持的 ASR_MODEL_SIZE。")
+
+        current_device = getattr(self.transcription_service, "device", ASR_DEVICE)
+        current_compute_type = getattr(self.transcription_service, "compute_type", ASR_COMPUTE_TYPE)
+        self.transcription_service = FasterWhisperTranscriptionService(
+            model_size=payload.model_size,
+            device=current_device,
+            compute_type=current_compute_type,
+            download_root=MODELS_DIR,
+        )
+        save_local_settings(
+            {
+                "ASR_MODEL_SIZE": payload.model_size,
+                "ASR_DEVICE": current_device,
+                "ASR_COMPUTE_TYPE": current_compute_type,
+            },
+            target_path=self.settings_file,
+        )
+        return self.get_app_settings()
 
     def _to_meeting_list_item(self, meeting: MeetingRecord) -> MeetingListItem:
         return MeetingListItem(

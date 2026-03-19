@@ -188,6 +188,35 @@ label {
   line-height: 1.6;
 }
 
+.settings-grid {
+  align-items: end;
+}
+
+.settings-readout {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.settings-readout strong {
+  color: var(--text);
+  margin-right: 6px;
+}
+
+.settings-row {
+  align-items: center;
+}
+
+#settings-status {
+  margin: 0;
+  color: var(--muted);
+}
+
 input,
 select,
 textarea,

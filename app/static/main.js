@@ -10,6 +10,11 @@ const elements = {
   recordStartButton: document.querySelector("#record-start"),
   recordStopButton: document.querySelector("#record-stop"),
   recordClearButton: document.querySelector("#record-clear"),
+  settingsAsrModelSize: document.querySelector("#setting-asr-model-size"),
+  settingsAsrDevice: document.querySelector("#setting-asr-device"),
+  settingsAsrComputeType: document.querySelector("#setting-asr-compute-type"),
+  settingsSaveButton: document.querySelector("#save-settings"),
+  settingsStatus: document.querySelector("#settings-status"),
   runtimeHint: document.querySelector("#runtime-hint"),
   statusText: document.querySelector("#status-text"),
   overview: document.querySelector("#overview"),
@@ -31,6 +36,7 @@ const state = {
   dashboard: null,
   currentMeeting: null,
   selectedTopicId: null,
+  settings: null,
   audioBlob: null,
   audioFilename: null,
   audioSource: "audio_upload",
@@ -45,11 +51,13 @@ elements.audioFileInput.addEventListener("change", handleAudioFileChange);
 elements.recordStartButton.addEventListener("click", startRecording);
 elements.recordStopButton.addEventListener("click", stopRecording);
 elements.recordClearButton.addEventListener("click", clearAudioSelection);
+elements.settingsSaveButton.addEventListener("click", saveSettings);
 
 bootstrap();
 
 async function bootstrap() {
   await checkRuntime();
+  await loadSettings();
   await refreshDashboard({ preferLatest: true });
 }
 
@@ -66,10 +74,10 @@ async function checkRuntime() {
     const llmHint =
       health.llm_enabled === "true"
         ? `模型增强已启用，当前使用 ${escapeHtml(health.llm_model || health.llm_provider)}。`
-        : "当前处于本地规则分析模式，接入环境变量后会自动切到 Kimi 增强模式。";
+        : "当前处于本地规则分析模式。";
     const asrHint =
       health.asr_enabled === "true"
-        ? `音频转写已启用，当前使用 ${escapeHtml(health.asr_model || health.asr_provider)}。`
+        ? `音频转写已启用，当前模型是 ${escapeHtml(health.asr_model || health.asr_provider)}，设备为 ${escapeHtml(health.asr_device || "cpu")}。`
         : "音频转写未启用。";
     elements.runtimeHint.innerHTML = `后端连接正常。${llmHint} ${asrHint}`;
   } catch (error) {
@@ -77,9 +85,19 @@ async function checkRuntime() {
   }
 }
 
+async function loadSettings() {
+  try {
+    const settings = await api.settings();
+    state.settings = settings;
+    renderSettings(settings);
+  } catch (error) {
+    elements.settingsStatus.textContent = "设置加载失败，请检查后端是否已启动。";
+  }
+}
+
 async function loadSample() {
   try {
-    setStatus("正在载入示例对话…");
+    setStatus("正在载入示例对话...");
     clearAudioSelection({ silent: true });
     const sample = await api.sampleTranscript();
     elements.titleInput.value = sample.title;
@@ -96,14 +114,14 @@ async function analyzeMeeting() {
   const transcriptText = elements.transcriptInput.value.trim();
   const hasAudio = Boolean(state.audioBlob);
   if (!hasAudio && !transcriptText) {
-    setStatus("请先输入会议转写内容，或先上传/录制一段音频。");
+    setStatus("请先输入会议转写内容，或者上传一段音频。");
     return;
   }
 
   setStatus(
     hasAudio
-      ? "正在转写音频并生成复盘。第一次运行可能需要下载本地 ASR 模型，请稍等。"
-      : "正在分析会议内容，这一步会抽取问答、生成复盘并刷新知识库…"
+      ? "正在转写音频并生成复盘。首次使用新 ASR 模型时可能会下载本地模型，请稍等。"
+      : "正在分析会议内容，这一步会抽取问答、生成复盘并刷新主题库。"
   );
   elements.overview.textContent = "处理中，请稍候。";
 
@@ -115,11 +133,34 @@ async function analyzeMeeting() {
     await refreshDashboard();
     renderMeeting(meeting);
     if (state.selectedTopicId) {
-      await selectTopic(state.selectedTopicId);
+      await selectTopic(state.selectedTopicId, { silent: true });
     }
     setStatus(`分析完成，已识别 ${meeting.qa_exchanges.length} 组有效问答。`);
   } catch (error) {
     showRuntimeError(error, "分析失败");
+  }
+}
+
+async function saveSettings() {
+  const modelSize = elements.settingsAsrModelSize.value;
+  if (!modelSize) {
+    elements.settingsStatus.textContent = "请先选择一个 ASR 模型档位。";
+    return;
+  }
+
+  elements.settingsSaveButton.disabled = true;
+  elements.settingsStatus.textContent = "正在保存设置并更新本地转写服务...";
+  try {
+    const settings = await api.updateAsrSettings({ model_size: modelSize });
+    state.settings = settings;
+    renderSettings(settings);
+    await checkRuntime();
+    elements.settingsStatus.textContent = `已保存。当前 ASR 模型档位为 ${modelSize}。下一次音频分析会按新设置运行。`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "未知错误";
+    elements.settingsStatus.textContent = `保存失败：${message}`;
+  } finally {
+    elements.settingsSaveButton.disabled = false;
   }
 }
 
@@ -198,6 +239,20 @@ async function selectTopic(topicId, { silent = false } = {}) {
   }
 }
 
+function renderSettings(settings) {
+  const asr = settings.asr;
+  const currentValue = asr.model_size || "small";
+  elements.settingsAsrModelSize.innerHTML = asr.options
+    .map((option) => {
+      const selected = option.value === currentValue ? " selected" : "";
+      return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(option.label)} - ${escapeHtml(option.description)}</option>`;
+    })
+    .join("");
+  elements.settingsAsrDevice.textContent = asr.device || "cpu";
+  elements.settingsAsrComputeType.textContent = asr.compute_type || "int8";
+  elements.settingsStatus.textContent = asr.note || "可以在这里调整本地转写模型配置。";
+}
+
 function renderMetrics(dashboard) {
   elements.totalMeetings.textContent = String(dashboard.total_meetings);
   elements.totalQa.textContent = String(dashboard.total_qa_pairs);
@@ -212,12 +267,12 @@ function renderMeeting(meeting) {
   const weakest = review?.weakest_topics?.join("、") || "待识别";
 
   elements.overview.innerHTML = `
-    <strong>${meeting.title}</strong><br />
-    总评分 <strong>${review?.overall_score ?? "-"}</strong> / 100。${review?.meeting_summary ?? ""}<br /><br />
-    <strong>风格画像：</strong>${style?.style_summary ?? "待生成"}<br />
-    <strong>亮点主题：</strong>${strongest}<br />
-    <strong>优先补强：</strong>${weakest}<br />
-    <strong>预算申请时可讲的价值：</strong>这套系统已经能把一场融资对话自动沉淀成“会议历史 + 主题库 + 标准话术 + 培训脚本”。
+    <strong>${escapeHtml(meeting.title)}</strong><br />
+    总评分 <strong>${review?.overall_score ?? "-"}</strong> / 100。${escapeHtml(review?.meeting_summary ?? "")}<br /><br />
+    <strong>风格画像：</strong>${escapeHtml(style?.style_summary ?? "待生成")}<br />
+    <strong>亮点主题：</strong>${escapeHtml(strongest)}<br />
+    <strong>优先补强：</strong>${escapeHtml(weakest)}<br />
+    <strong>预算汇报可讲价值：</strong>这套系统已经能把一场融资对话自动沉淀成“会议历史 + 主题库 + 标准话术 + 培训脚本”。
   `;
 
   if (!meeting.qa_exchanges.length) {
@@ -228,9 +283,12 @@ function renderMeeting(meeting) {
   elements.qaList.innerHTML = meeting.qa_exchanges
     .map((qa, index) => {
       const reviewItem = qa.review;
+      const strengths = reviewItem?.strengths?.join("；") || "待补充";
+      const weaknesses = reviewItem?.weaknesses?.join("；") || "暂无明显问题";
+      const suggestions = reviewItem?.improvement_suggestions?.join("；") || "继续保持";
       return `
         <article class="qa-item">
-          <h4>问答 ${index + 1} · ${qa.topic_name}</h4>
+          <h4>问答 ${index + 1} · ${escapeHtml(qa.topic_name)}</h4>
           <div class="pill-row">
             <span class="pill">完整性 ${reviewItem.completeness_score}</span>
             <span class="pill">清晰度 ${reviewItem.clarity_score}</span>
@@ -244,9 +302,9 @@ function renderMeeting(meeting) {
             <div class="score-chip">风险表达<strong>${reviewItem.risk_score}</strong></div>
             <div class="score-chip">识别置信度<strong>${Math.round(qa.confidence * 100)}</strong></div>
           </div>
-          <p><strong>优点：</strong>${escapeHtml(reviewItem.strengths.join("；") || "待补充")}</p>
-          <p class="${reviewItem.weaknesses.length ? "risk" : ""}"><strong>不足：</strong>${escapeHtml(reviewItem.weaknesses.join("；") || "暂无明显问题")}</p>
-          <p><strong>建议：</strong>${escapeHtml(reviewItem.improvement_suggestions.join("；") || "继续保持")}</p>
+          <p><strong>优点：</strong>${escapeHtml(strengths)}</p>
+          <p class="${reviewItem.weaknesses.length ? "risk" : ""}"><strong>不足：</strong>${escapeHtml(weaknesses)}</p>
+          <p><strong>建议：</strong>${escapeHtml(suggestions)}</p>
         </article>
       `;
     })
@@ -290,7 +348,7 @@ function renderTopics(topics) {
         <article class="list-item ${topic.id === state.selectedTopicId ? "active" : ""}" data-topic-id="${topic.id}">
           <h4>${escapeHtml(topic.name)}</h4>
           <div class="list-meta">
-            <div>出现频次 ${topic.frequency} · 最近质量分 ${topic.latest_score}</div>
+            <div>出现频次 ${topic.frequency} · 最近评分 ${topic.latest_score}</div>
             <div>${escapeHtml(topic.sample_questions[0] || topic.description)}</div>
           </div>
         </article>
@@ -311,7 +369,7 @@ function renderCanonicalAnswer(topicDetail) {
   }
 
   const lines = [
-    `${topicDetail.topic.name}`,
+    topicDetail.topic.name,
     "",
     `一句话回答：${canonical.summary_answer}`,
     "",
@@ -349,12 +407,11 @@ function renderEmptyDashboard() {
 }
 
 function showRuntimeError(error, prefix) {
-  const message =
-    error instanceof Error ? error.message : "未知错误，请检查后端是否已启动。";
+  const message = error instanceof Error ? error.message : "未知错误，请检查后端是否已启动。";
   const hint =
     '请确认你是通过 <code>http://127.0.0.1:8000</code> 打开的页面，并且已经运行 <code>.\\.venv\\Scripts\\python -m uvicorn app.main:app --reload</code>。';
   setStatus(`${prefix}：${message}`);
-  elements.overview.innerHTML = `<strong>${prefix}</strong><br />${escapeHtml(message)}<br /><br />${hint}`;
+  elements.overview.innerHTML = `<strong>${escapeHtml(prefix)}</strong><br />${escapeHtml(message)}<br /><br />${hint}`;
   elements.runtimeHint.innerHTML = hint;
 }
 
@@ -404,11 +461,13 @@ async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const chunks = [];
     const recorder = new MediaRecorder(stream);
+
     recorder.addEventListener("dataavailable", (event) => {
       if (event.data.size > 0) {
         chunks.push(event.data);
       }
     });
+
     recorder.addEventListener("stop", () => {
       const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
       state.audioBlob = blob;
@@ -421,13 +480,14 @@ async function startRecording() {
       elements.recordStartButton.disabled = false;
       elements.recordStopButton.disabled = true;
     });
+
     recorder.start();
     state.mediaRecorder = recorder;
     state.mediaStream = stream;
     elements.recordStartButton.disabled = true;
     elements.recordStopButton.disabled = false;
     setStatus("正在录音，结束后点击“停止录音”。");
-    renderAudioMeta("录音中… 停止后会把这段音频用于自动转写。");
+    renderAudioMeta("录音中。停止后会把这段音频用于自动转写。");
   } catch (error) {
     showRuntimeError(error, "录音启动失败");
   }
