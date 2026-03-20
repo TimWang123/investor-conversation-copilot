@@ -15,6 +15,18 @@
   </p>
 </div>
 
+## 最近更新
+
+- 当前版本：`0.3.0`
+- 完整更新日志：[CHANGELOG.md](./CHANGELOG.md)
+- 发布下载入口：[GitHub Releases](https://github.com/TimWang123/investor-conversation-copilot/releases)
+
+### 近期里程碑
+
+- `0.3.0`：新增多人会议 MVP，支持参会名单、按发言人拆分问答、发言人表现、一致性风险和待跟进问题
+- `0.2.5`：新增设置页里的 LLM provider / model 切换
+- `0.2.4`：新增 Qwen / DashScope 模型支持
+
 ## 这个项目解决什么问题
 
 创始人和融资团队每天会重复回答大量相似的投资人问题，但这些回答往往不会被系统化沉淀，更难形成团队统一口径。

@@ -15,6 +15,18 @@
   </p>
 </div>
 
+## Recent Updates
+
+- Latest version: `0.3.0`
+- Full update log: [CHANGELOG.md](./CHANGELOG.md)
+- Release downloads: [GitHub Releases](https://github.com/TimWang123/investor-conversation-copilot/releases)
+
+### Latest Milestones
+
+- `0.3.0`: added the multi-party meeting MVP with participant rosters, speaker-aware Q&A extraction, speaker reviews, consistency risks, and unanswered follow-up tracking
+- `0.2.5`: added the settings-page controls for switching LLM provider and model at runtime
+- `0.2.4`: added Qwen / DashScope support through the provider-based LLM gateway
+
 ## Why This Exists
 
 Founders and fundraising teams answer the same investor questions over and over, but the answers rarely get preserved as a consistent operating asset.
